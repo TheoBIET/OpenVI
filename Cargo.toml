@@ -2,15 +2,8 @@
 members = ["apps/desktop/src-tauri", "crates/openvi-formats", "crates/openvi-index"]
 resolver = "3"
 
-# Archive scans inflate gigabytes: keep the decoders fast in `pnpm dev` too.
-[profile.dev.package.sixng-core]
-opt-level = 3
-
-[profile.dev.package.flate2]
-opt-level = 3
-
-[profile.dev.package.zlib-rs]
-opt-level = 3
-
-[profile.dev.package.miniz_oxide]
+# `pnpm dev` runs a debug build: scans inflate gigabytes, exports decode and PNG-encode textures, catalogs parse large
+# JSON. Every dependency is optimised even in dev (OpenVI's own crates stay quick to rebuild); without it, opening a
+# model or a catalog runs tens of times slower than in a release build.
+[profile.dev.package."*"]
 opt-level = 3
