@@ -12,6 +12,11 @@ export function formatSize(bytes: number): string {
   return `${value.toFixed(unit === 0 ? 0 : 1)} ${sizeUnits[unit]}`;
 }
 
+/** An offset in an archive, as the "Offset" column shows it. */
+export function formatOffset(offset: number): string {
+  return `0x${offset.toString(16).toUpperCase().padStart(9, '0')}`;
+}
+
 const typeByExtension: Record<string, string> = {
   rpf: 'Rage Package File',
   ttpf: 'Texture store',
@@ -33,6 +38,7 @@ export function extensionOf(name: string): string | null {
 
 /** Explorer "Type" column, also used to group the list. */
 export function typeLabel(entry: Entry): string {
+  if (entry.typeName) return entry.typeName;
   if (entry.kind === 'folder') return 'Folder';
   const extension = extensionOf(entry.name);
   if (!extension) return 'File';

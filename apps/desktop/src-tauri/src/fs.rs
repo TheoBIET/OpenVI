@@ -5,33 +5,40 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-/// One directory as the explorer shows it.
+/// One directory, or one archive, as the explorer shows it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Listing {
-    path: PathBuf,
+    pub(crate) path: PathBuf,
     /// From the game folder down to `path`, for the breadcrumb.
-    crumbs: Vec<Crumb>,
+    pub(crate) crumbs: Vec<Crumb>,
     /// Folders first, then archives, then other files; by name within each.
-    entries: Vec<Entry>,
+    pub(crate) entries: Vec<Entry>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct Crumb {
-    name: String,
-    path: PathBuf,
+    pub(crate) name: String,
+    pub(crate) path: PathBuf,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {
-    name: String,
-    path: PathBuf,
-    kind: EntryKind,
-    /// Bytes on disk; 0 for folders.
-    size: u64,
+    pub(crate) name: String,
+    /// Unique in a listing. For a resource: the archive path, `#`, its offset in hex.
+    pub(crate) path: PathBuf,
+    pub(crate) kind: EntryKind,
+    /// Bytes on disk; 0 for folders. For a resource, its inflated size.
+    pub(crate) size: u64,
     /// Direct children of a folder; `None` for files or unreadable folders.
-    items: Option<u64>,
+    pub(crate) items: Option<u64>,
+    /// A resource's offset in its archive.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) offset: Option<u64>,
+    /// A resource's type, as the explorer's "Type" column shows it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) type_name: Option<&'static str>,
 }
 
 /// Declaration order is the explorer's sort order.
@@ -41,6 +48,8 @@ pub enum EntryKind {
     Folder,
     Archive,
     File,
+    /// A resource carved out of an archive.
+    Resource,
 }
 
 /// Lists `path`, which must be `root` or inside it.
@@ -52,7 +61,16 @@ pub async fn list_dir(root: PathBuf, path: PathBuf) -> Result<Listing, String> {
         .map_err(|error| error.to_string())
 }
 
-fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
+/// `path` inside the opened game folder `root`.
+pub(crate) struct Located {
+    pub(crate) path: PathBuf,
+    /// Path from `root`, forward slashes; empty for `root` itself.
+    pub(crate) relative: String,
+    pub(crate) crumbs: Vec<Crumb>,
+}
+
+/// Canonicalises `root` and `path`, refuses a `path` outside `root`, and builds the breadcrumb down to it.
+pub(crate) fn locate(root: &Path, path: &Path) -> io::Result<Located> {
     let root = dunce::canonicalize(root)?;
     let path = dunce::canonicalize(path)?;
     let relative = path.strip_prefix(&root).map_err(|_| {
@@ -67,13 +85,25 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
         path: root.clone(),
     }];
     let mut at = root.clone();
+    let mut parts = Vec::new();
     for part in relative.components() {
+        let name = part.as_os_str().to_string_lossy().into_owned();
         at.push(part);
         crumbs.push(Crumb {
-            name: part.as_os_str().to_string_lossy().into_owned(),
+            name: name.clone(),
             path: at.clone(),
         });
+        parts.push(name);
     }
+    Ok(Located {
+        relative: parts.join("/"),
+        path,
+        crumbs,
+    })
+}
+
+fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
+    let Located { path, crumbs, .. } = locate(root, path)?;
 
     let mut entries = Vec::new();
     for entry in std::fs::read_dir(&path)? {
@@ -95,6 +125,8 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 kind: EntryKind::Folder,
                 size: 0,
                 items,
+                offset: None,
+                type_name: None,
             });
         } else if file_type.is_file() {
             let kind = if is_archive(&entry_path) {
@@ -108,6 +140,8 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 kind,
                 size: entry.metadata()?.len(),
                 items: None,
+                offset: None,
+                type_name: None,
             });
         }
     }
@@ -137,7 +171,7 @@ fn display_name(path: &Path) -> String {
         .unwrap_or_else(|| path.display().to_string())
 }
 
-fn is_archive(path: &Path) -> bool {
+pub(crate) fn is_archive(path: &Path) -> bool {
     path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("rpf"))
 }
 

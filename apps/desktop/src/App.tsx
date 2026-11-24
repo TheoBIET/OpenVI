@@ -1,12 +1,22 @@
 import { open } from '@tauri-apps/plugin-dialog';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
+import { ScanPanel } from './components/ScanPanel';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
-import { type Entry, isTreeEntry, type Listing, listDir } from './lib/fs';
+import {
+  type Entry,
+  isArchivePath,
+  isTreeEntry,
+  type Listing,
+  listDir,
+  listPath,
+  onArchiveProgress,
+  type ScanProgress,
+} from './lib/fs';
 
 const lastFolderKey = 'openvi.lastGameFolder';
 
@@ -22,13 +32,26 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The archive being opened, while its listing is on its way. */
+  const [opening, setOpening] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ScanProgress | null>(null);
+  /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
+  const latest = useRef(0);
 
+  /** Lists a folder or an archive; null when it failed or a later navigation superseded it. */
   async function load(rootPath: string, path: string): Promise<Listing | null> {
+    const ticket = ++latest.current;
+    const archive = isArchivePath(path);
+    setOpening(archive ? path : null);
+    setProgress(null);
     try {
-      return await listDir(rootPath, path);
+      const next = await listPath(rootPath, path);
+      return ticket === latest.current ? next : null;
     } catch (failure) {
-      setError(String(failure));
+      if (ticket === latest.current) setError(String(failure));
       return null;
+    } finally {
+      if (ticket === latest.current) setOpening(null);
     }
   }
 
@@ -90,19 +113,25 @@ export function App() {
       return;
     }
     if (!tree[path]) {
-      const next = await load(root, path);
-      if (!next) return;
+      // Only folders expand in the tree, and expanding one must not cancel a navigation under way.
+      let next: Listing;
+      try {
+        next = await listDir(root, path);
+      } catch (failure) {
+        setError(String(failure));
+        return;
+      }
       setTree((previous) => ({ ...previous, [path]: next.entries.filter(isTreeEntry) }));
     }
     setExpanded((previous) => new Set(previous).add(path));
   }
 
   function activate(entry: Entry) {
-    if (entry.kind === 'folder') {
+    if (entry.kind === 'folder' || entry.kind === 'archive') {
       void navigate(entry.path);
-    } else if (entry.kind === 'archive') {
+    } else if (entry.kind === 'resource') {
       setSelected(entry.path);
-      setNotice(`Opening archives is not available yet: ${entry.name} will open once the archive view ships.`);
+      setNotice(`Previews are not available yet: ${entry.name} will open once the viewers ship.`);
     }
   }
 
@@ -110,6 +139,11 @@ export function App() {
   useEffect(() => {
     const last = localStorage.getItem(lastFolderKey);
     if (last) void openGameFolder(last);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = onArchiveProgress(setProgress);
+    return () => void unlisten.then((stop) => stop());
   }, []);
 
   const visible = useMemo(() => {
@@ -149,13 +183,20 @@ export function App() {
             onNavigate={(path) => void navigate(path)}
             onActivate={activate}
           />
-          <FileList
-            entries={visible}
-            selected={selected}
-            onSelect={setSelected}
-            onActivate={activate}
-            onUp={() => parent && void navigate(parent.path)}
-          />
+          {opening ? (
+            <ScanPanel
+              name={opening.split(/[\\/]/).at(-1) ?? opening}
+              progress={progress?.archive === opening ? progress : null}
+            />
+          ) : (
+            <FileList
+              entries={visible}
+              selected={selected}
+              onSelect={setSelected}
+              onActivate={activate}
+              onUp={() => parent && void navigate(parent.path)}
+            />
+          )}
         </div>
       ) : (
         <EmptyState error={error} onOpen={() => void chooseGameFolder()} />

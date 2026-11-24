@@ -2559,7 +2559,9 @@ dependencies = [
 name = "openvi"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "dunce",
+ "openvi-formats",
  "serde",
  "tauri",
  "tauri-build",
