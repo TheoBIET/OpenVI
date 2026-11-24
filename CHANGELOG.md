@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.6.1 (2026-11-24)
+
+- 3D models show their textures: they all failed to load before, and models looked white.
+- The render mode is picked from a dropdown; the header counts the model's textures and lists missing ones.
+
 ## 0.6.0 (2026-11-24)
 
 - 3D render modes: Lit (textures and lights), Unlit (textures only), Clay (grey shape), Normals (surface
