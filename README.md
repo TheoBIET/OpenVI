@@ -1,12 +1,13 @@
 <div align="center">
   <img src="apps/desktop/app-icon.svg" width="96" alt="OpenVI" />
   <h1>OpenVI</h1>
-  <p><strong>An open-source explorer and data-mining toolkit for GTA VI files.</strong></p>
+  <p><strong>An unofficial, open-source explorer and data-mining toolkit for GTA VI files, in the spirit of OpenIV.</strong></p>
   <p>Browse the folders and RPF9 archives of your own install, look inside them, and catalog what the game holds.</p>
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-ff4f9a)](LICENSE)
 [![Status: early development](https://img.shields.io/badge/status-early%20development-ff8a4c)](#roadmap)
 [![Built with Tauri 2](https://img.shields.io/badge/Tauri-2-2fd5c8)](https://v2.tauri.app)
+[![Built by AI](https://img.shields.io/badge/built%20by-AI%20agents-9b92b0)](#built-by-ai)
 
 </div>
 
@@ -51,6 +52,12 @@ flowchart LR
   index --> ui
   ui -->|export| out["glTF · PNG · JSON · CSV<br/>on your machine only"]
 ```
+
+## Built by AI
+
+OpenVI is developed entirely by AI agents ([Claude Code](https://claude.com/claude-code)): code, documentation and
+design. The maintainer decides what gets built and tests it on real hardware. Human and agent contributions follow the
+same rules ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Build from source
 
@@ -104,5 +111,7 @@ The explorer layout pays tribute to [OpenIV](https://openiv.com); OpenVI is not 
 
 OpenVI is free software under the [GNU General Public License v3.0 only](LICENSE).
 
-OpenVI is not affiliated with, endorsed by or sponsored by Rockstar Games or Take-Two Interactive. Grand Theft Auto
-and related names are trademarks of their respective owners. OpenVI ships no game files.
+OpenVI is an unofficial fan project, not affiliated with, endorsed by or sponsored by Rockstar Games, Take-Two
+Interactive or the OpenIV team. Grand Theft Auto and related names are trademarks of their respective owners.
+OpenVI ships no game files and decrypts nothing: it reads the unencrypted data of files you own, for interoperability
+and research.
