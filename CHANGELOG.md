@@ -2,6 +2,14 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.4.0 (2026-11-24)
+
+- 3D preview: drawables, fragments and drawable dictionaries open in an orbitable three.js view with their textures
+  (wireframe, reframe, triangle count and size).
+- Vehicles in 3D: double-clicking a vehicle of the catalog shows the whole car with its wheels, in any of its spawn
+  configurations; Resources searches its model's resources.
+- Models are exported by SixNG into the app cache and reused on the next opening.
+
 ## 0.3.0 (2026-11-24)
 
 - Vehicles view: the toolbar's Vehicles button shows the vehicle catalog as a sortable table (name, model, make,

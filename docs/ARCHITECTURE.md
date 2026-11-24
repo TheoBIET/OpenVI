@@ -87,9 +87,13 @@ exposes its own types, so a SixNG update stops there:
   The work folder is SixNG's layout: scans in `<work>/index`, which is the app's scan cache.
 - Feature `fixtures`: a synthetic archive (DDS, PNG, XML, a named fragment, a texture dictionary holding one 64×64
   texture) for the tests of other crates.
+- `model::model_glb(game_root, work_dir, archive_id, offset)`: a drawable, fragment or drawable dictionary exported
+  by SixNG (`export_many`) to `<work>/models/.../model.glb`, PNG textures beside it; an earlier export is reused.
+- `model::vehicle_glb(game_root, work_dir, model, config, progress)`: a vehicle of the catalog in one spawn
+  configuration with its wheels (`vehexport::export_vehicle`, models from `levels.rpf`), to `<work>/vehicles`.
 
 All of them read the scan cache: a resource is reached by its archive and offset. Hash → name lookups
-(`sixng_core::names`) and model export are not wired yet.
+(`sixng_core::names`) are not wired yet.
 
 ## Viewers
 
@@ -104,6 +108,12 @@ Double-clicking (or Enter on) a loose file, or an XML, text or PNG resource, ope
 `file_bytes`. Text shows in Monaco, read-only (`CodeView.tsx`): bundled locally, never from a CDN, and loaded with
 `import()` on the first document, so it costs nothing at start-up. Its theme uses the colour tokens; XML and JSON can
 be laid out (`lib/prettify.ts`), and the language is picked from the extension or the first characters.
+
+Models (drawables, fragments, drawable dictionaries) open in the 3D view (`ModelView.tsx`, `lib/scene.ts`):
+three.js, loaded with `import()` like Monaco, orbit controls, the model standing on a grid at the origin (glTF is
+Y-up, in metres), wireframe and reframe. `model_preview` and `vehicle_preview` return the path of the GLB SixNG
+wrote; the frontend loads it with `convertFileSrc` through Tauri's asset protocol, which is scoped to
+`$APPCACHE/work/models` and `$APPCACHE/work/vehicles`, because the GLB names its PNG textures by relative path.
 
 ## Catalogs
 

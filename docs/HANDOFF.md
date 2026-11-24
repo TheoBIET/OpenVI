@@ -28,11 +28,19 @@ State of the work and the next task, for whoever picks it up. Update it when you
 - **Done:** document view. Double-clicking a loose file (text sniffed, images) or an XML, text or PNG resource opens
   it in place of the list: Monaco read-only with the OpenVI theme, Format (XML, JSON), Wrap; images fit or at actual
   size. Text resources up to 8 MB. Seen by the maintainer before Monaco: XML and text read fine.
+- **Done (0.3.0):** vehicle catalog. The toolbar's Vehicles button builds it (scans `packs.rpf` and `data.rpf` once)
+  and shows a sortable table exported as CSV or JSON; the `vehicles` example writes the same files. Rows come from
+  SixNG's `vehicles.json` and `handling.json`, joined in `openvi_formats::catalog::vehicle_rows` (tested on
+  hand-written JSON). **Not yet run on complete game files.**
+- **Done (0.4.0):** 3D preview. Drawables, fragments and drawable dictionaries open in a three.js view (document
+  view); double-clicking a vehicle shows the whole car in any spawn configuration. SixNG exports the GLB into
+  `<cache>/work/models` or `<cache>/work/vehicles`; the frontend loads it through the asset protocol (scoped to those
+  two folders) so the PNG textures beside it resolve. **Never seen: needs real models.**
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 25 tests.
+  `cargo test` now runs 35 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
@@ -73,6 +81,8 @@ The maintainer tests with his own copy of the game files. Keep everything from t
    `vehicles.csv` and `vehicles.json` (model, hash, display name, make, handling, colour, rim, tyre, mass, top speed,
    gears). Needs `packs.rpf` complete, and `data.rpf` for display names and handling. Run `list_archive` on
    `levels.rpf` first for more model names.
+7. 3D: in `levels.rpf`, double-click a Drawable or a Fragment; in the Vehicles view, double-click a car (the first
+   time scans `levels.rpf`, about 3 min). Check scale, orientation, textures, and switch configurations.
 
 Record the results here, fix what breaks, commit.
 
@@ -94,15 +104,14 @@ carver cannot see, folders counted in the header, or the missing parts above.
 
 ## Then, in order
 
-1. **Model preview**: SixNG builds GLBs only inside its exporter. Call `sixng_core::export::export_many` for one
-   entry into a folder of the app cache (models land in `models/<archive>/<name>_<off>/model.glb`), return the GLB
-   bytes through `tauri::ipc::Response`, and show it with three.js (`GLTFLoader`) in the properties panel. Needs a
-   real drawable to check by eye; synthetic meshes are out of reach.
-2. **Exports**: save a texture as PNG or DDS, a text resource as a file, a model as GLB (the dialog plugin is
-   already in).
-3. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
+1. **Check on complete files** (the maintainer's copy is incomplete): the archive view, search, textures, the
+   vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
+2. **Exports**: save a texture as PNG or DDS, a text resource as a file, a model or vehicle as GLB (copy the export
+   out of the work folder; the dialog plugin and `dialog:allow-save` are in).
+3. **More catalogs**, like vehicles: weapons (`sixng_core::weapon`), peds and outfits, text tables
+   (`sixng_core::text`); then the other data-mining views of [PRODUCT.md](PRODUCT.md).
+4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
-4. **Data-mining views** ([PRODUCT.md](PRODUCT.md)).
 5. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
 
 ## Open questions for the maintainer
