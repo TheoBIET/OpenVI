@@ -1,0 +1,10 @@
+# LF everywhere, also in Windows checkouts: oxfmt, rustfmt and the git hooks expect it.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
+
+# Windows batch scripts need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
