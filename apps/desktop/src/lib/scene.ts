@@ -34,7 +34,53 @@ export type SceneHandle = {
   /** Seconds into the playing animation. */
   time: () => number;
   seek: (seconds: number) => void;
+  /**
+   * Loads the animations of another GLB (a clip exported on its own, skeleton only) and makes them this model's:
+   * their tracks drive the joints of the same name. Resolves to the new animation list.
+   */
+  loadAnimations: (glbPath: string) => Promise<{ name: string; duration: number }[]>;
 };
+
+/** Bounds of `object`: its meshes, or, for a skeleton without meshes, its joints. */
+function boundsOf(object: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3().setFromObject(object);
+  if (!box.isEmpty()) return box;
+  object.updateMatrixWorld(true);
+  object.traverse((node) => {
+    if (node !== object) box.expandByPoint(node.getWorldPosition(new THREE.Vector3()));
+  });
+  return box.isEmpty() ? new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5)) : box;
+}
+
+/**
+ * Lines from each joint to its parent, for a skeleton without meshes (a clip exported on its own): the bones the
+ * animation moves. `update` follows the joints each frame.
+ */
+function jointLines(root: THREE.Object3D): { lines: THREE.LineSegments; update: () => void } {
+  const pairs: [THREE.Object3D, THREE.Object3D][] = [];
+  root.traverse((node) => {
+    if (node !== root && node.parent && node.parent !== root) pairs.push([node.parent, node]);
+  });
+  const positions = new Float32Array(pairs.length * 6);
+  const geometry = new THREE.BufferGeometry();
+  const attribute = new THREE.BufferAttribute(positions, 3);
+  geometry.setAttribute('position', attribute);
+  const material = new THREE.LineBasicMaterial({ color: 0x38d6ff, depthTest: false, transparent: true });
+  const lines = new THREE.LineSegments(geometry, material);
+  lines.renderOrder = 1;
+  const point = new THREE.Vector3();
+  function update() {
+    root.updateMatrixWorld(true);
+    pairs.forEach(([parent, child], index) => {
+      parent.getWorldPosition(point).toArray(positions, index * 6);
+      child.getWorldPosition(point).toArray(positions, index * 6 + 3);
+    });
+    attribute.needsUpdate = true;
+    geometry.computeBoundingSphere();
+  }
+  update();
+  return { lines, update };
+}
 
 /** Materials the other modes swap in, made once per scene. */
 function modeMaterials() {
@@ -135,6 +181,8 @@ export function mountScene(
   const replacements = modeMaterials();
   const unlit = new Map<THREE.Material, THREE.MeshBasicMaterial>();
   let mode: RenderMode = 'lit';
+  /** The bones drawn for a model without meshes. */
+  let joints: { lines: THREE.LineSegments; update: () => void } | null = null;
 
   function apply() {
     for (const [mesh, own] of originals) {
@@ -158,7 +206,7 @@ export function mountScene(
 
   function frame() {
     if (!model) return;
-    const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+    const size = boundsOf(model).getSize(new THREE.Vector3());
     const largest = Math.max(size.x, size.y, size.z, 0.1);
     camera.near = largest / 200;
     camera.far = largest * 200;
@@ -188,7 +236,7 @@ export function mountScene(
       if (disposed) return;
       model = gltf.scene;
       // Centre on the origin, standing on the ground.
-      const box = new THREE.Box3().setFromObject(model);
+      const box = boundsOf(model);
       const centre = box.getCenter(new THREE.Vector3());
       model.position.set(-centre.x, -box.min.y, -centre.z);
       scene.add(model);
@@ -223,6 +271,10 @@ export function mountScene(
           for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
         }
       }
+      if (meshes === 0) {
+        joints = jointLines(model);
+        scene.add(joints.lines);
+      }
       // Ready before onReady, so the caller can start an animation from it.
       if (gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(model);
@@ -248,6 +300,7 @@ export function mountScene(
     frameId = requestAnimationFrame(render);
     const delta = clock.getDelta();
     if (mixer && !paused) mixer.update(delta * speed);
+    joints?.update();
     controls.update();
     renderer.render(scene, camera);
   }
@@ -282,11 +335,23 @@ export function mountScene(
       action.time = seconds;
       mixer.update(0);
     },
+    async loadAnimations(path) {
+      const gltf = await new GLTFLoader().loadAsync(convertFileSrc(path));
+      if (disposed || !model) return [];
+      mixer ??= new THREE.AnimationMixer(model);
+      mixer.stopAllAction();
+      for (const clip of clips) mixer.uncacheClip(clip);
+      action = null;
+      clips = gltf.animations;
+      return clips.map((clip, index) => ({ name: clip.name || `animation ${index + 1}`, duration: clip.duration }));
+    },
     dispose() {
       disposed = true;
       cancelAnimationFrame(frameId);
       mixer?.stopAllAction();
       observer.disconnect();
+      joints?.lines.geometry.dispose();
+      if (joints && joints.lines.material instanceof THREE.Material) joints.lines.material.dispose();
       controls.dispose();
       for (const [mesh, own] of originals) {
         const geometry: unknown = mesh.geometry;

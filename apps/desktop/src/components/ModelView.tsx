@@ -31,12 +31,15 @@ export function ModelView({
   actions,
   busy = null,
   banner = null,
+  animation = null,
 }: {
   path: string;
   title: string;
   actions?: ReactNode;
   busy?: string | null;
   banner?: string | null;
+  /** A GLB whose animations play on this model (a clip exported on its own): switching clips keeps the model. */
+  animation?: string | null;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   // Kept from one model to the next.
@@ -46,6 +49,33 @@ export function ModelView({
   const [showMaterials, setShowMaterials] = useState(false);
 
   const { handle, stats, error, loading } = useBufferedScene(stage, path, { mode });
+  // The clip's animations, loaded onto the model on screen; null: the model's own.
+  const [clips, setClips] = useState<{ name: string; duration: number }[] | null>(null);
+  const [clipLoading, setClipLoading] = useState(false);
+  const [clipError, setClipError] = useState<string | null>(null);
+  useEffect(() => {
+    setClips(null);
+    setClipError(null);
+    if (!handle || !animation) return;
+    let current = true;
+    setClipLoading(true);
+    handle.loadAnimations(animation).then(
+      (list) => {
+        if (!current) return;
+        setClips(list);
+        setClipLoading(false);
+      },
+      (failure: unknown) => {
+        if (!current) return;
+        setClipError(`Cannot load this clip: ${String(failure)}`);
+        setClipLoading(false);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [handle, animation]);
+  const animations = clips ?? stats?.animations ?? [];
 
   useEffect(() => {
     setSaved(null);
@@ -136,24 +166,26 @@ export function ModelView({
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div ref={stage} className="absolute inset-0" />
           {!stats && !error && <StageSkeleton label={busy ?? 'Loading model…'} />}
-          {stats && (loading || busy) && <BusyOverlay label={busy ?? 'Loading model…'} />}
+          {stats && (loading || busy || clipLoading) && (
+            <BusyOverlay label={busy ?? (clipLoading ? 'Loading the clip…' : 'Loading model…')} />
+          )}
           {!stats && error && (
             <p className="absolute inset-0 grid place-items-center px-10 text-center text-xs text-destructive">
               {error}
             </p>
           )}
-          {stats && (banner ?? error) && (
+          {stats && (banner ?? error ?? clipError) && (
             <p
               role="alert"
               className="absolute inset-x-3 top-3 z-20 rounded-md border border-destructive/40 bg-card/95 px-3 py-1.5 text-xs text-destructive"
             >
-              {banner ?? error}
+              {banner ?? error ?? clipError}
             </p>
           )}
         </div>
         {showMaterials && <MaterialsPanel glb={path} />}
       </div>
-      {stats && handle && stats.animations.length > 0 && <AnimationBar handle={handle} animations={stats.animations} />}
+      {stats && handle && animations.length > 0 && <AnimationBar handle={handle} animations={animations} />}
       <p className="h-6 shrink-0 border-t border-border bg-card px-3 text-xs leading-6 text-muted-foreground">
         Drag to orbit · right-drag to pan · wheel to zoom
       </p>

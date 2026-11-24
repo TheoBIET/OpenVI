@@ -44,6 +44,8 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
   const [character, setCharacter] = useState<string | null>(null);
   const [skeletonOnly, setSkeletonOnly] = useState(false);
   const [glb, setGlb] = useState<Loaded<string>>({ state: 'idle' });
+  /** The clip exported on its own (skeleton and animation). */
+  const [clipGlb, setClipGlb] = useState<Loaded<string>>({ state: 'idle' });
   /** The last clip assembled: it stays on screen while the next one is. */
   const [shown, setShown] = useState<string | null>(null);
 
@@ -84,11 +86,12 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
     };
   }, [root, dictionary, characters]);
 
+  // The character is assembled once per character (its default look, without animation)…
   useEffect(() => {
-    if (!dictionary || !clip || !character) return;
+    if (!character || !dictionary) return;
     let current = true;
     setGlb({ state: 'loading' });
-    characterPreview(root, character, null, { dictionary, clip, skeletonOnly }).then(
+    characterPreview(root, character, null).then(
       (value) => {
         if (!current) return;
         setGlb({ state: 'ready', value });
@@ -99,7 +102,21 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
     return () => {
       current = false;
     };
-  }, [root, dictionary, clip, character, skeletonOnly]);
+  }, [root, character, dictionary === null]);
+
+  // …and each clip is exported on its own (skeleton and animation, no meshes or textures), then played on it.
+  useEffect(() => {
+    if (!dictionary || !clip || !character) return;
+    let current = true;
+    setClipGlb({ state: 'loading' });
+    characterPreview(root, character, null, { dictionary, clip, skeletonOnly: true }).then(
+      (value) => current && setClipGlb({ state: 'ready', value }),
+      (error: unknown) => current && setClipGlb({ state: 'failed', error: String(error) }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [root, dictionary, clip, character]);
 
   const matching = useMemo(() => {
     if (dictionaries.state !== 'ready') return [];
@@ -126,6 +143,13 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
   }
 
   const clipList = clips.state === 'ready' ? clips.value : [];
+  // What the 3D view says over the character: assembling it, or exporting the clip it is about to play.
+  let busyLabel: string | null = null;
+  if (glb.state === 'loading') busyLabel = `Assembling ${character ?? ''}…`;
+  else if (clipGlb.state === 'loading') busyLabel = `Exporting ${clip ?? ''}…`;
+  let problem: string | null = null;
+  if (glb.state === 'failed') problem = glb.error;
+  else if (clipGlb.state === 'failed') problem = clipGlb.error;
   const assembling = `Assembling ${character ?? ''} with ${clip ?? ''}…`;
   return (
     <div className="flex min-w-0 flex-1">
@@ -208,20 +232,33 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
           </label>
         </div>
         {/* The clip on screen keeps playing (blurred) while the next one is assembled. */}
-        {shown && (
+        {/* The character stays (blurred) while another is assembled; a new clip only swaps its animation. */}
+        {shown && !skeletonOnly && (
           <ModelView
             path={shown}
             title={`${dictionary ?? ''}/${clip ?? ''}`}
-            busy={glb.state === 'loading' ? assembling : null}
-            banner={glb.state === 'failed' ? glb.error : null}
+            animation={clipGlb.state === 'ready' ? clipGlb.value : null}
+            busy={busyLabel}
+            banner={problem}
           />
         )}
-        {!shown && glb.state === 'idle' && (
+        {/* The skeleton alone: the clip's own GLB, its bones drawn. */}
+        {skeletonOnly && clipGlb.state === 'ready' && (
+          <ModelView path={clipGlb.value} title={`${dictionary ?? ''}/${clip ?? ''} · skeleton`} />
+        )}
+        {skeletonOnly && clipGlb.state !== 'ready' && clipGlb.state !== 'idle' && (
+          <ModelViewSkeleton
+            title={`${dictionary ?? ''}/${clip ?? ''} · skeleton`}
+            label={`Exporting ${clip ?? ''}…`}
+            error={clipGlb.state === 'failed' ? clipGlb.error : null}
+          />
+        )}
+        {!shown && !skeletonOnly && glb.state === 'idle' && (
           <p className="grid flex-1 place-items-center px-10 text-center text-xs text-muted-foreground">
             Pick a dictionary and a clip to play it on a character.
           </p>
         )}
-        {!shown && glb.state !== 'idle' && (
+        {!shown && !skeletonOnly && glb.state !== 'idle' && (
           <ModelViewSkeleton
             title={`${dictionary ?? ''}/${clip ?? ''}`}
             label={assembling}
