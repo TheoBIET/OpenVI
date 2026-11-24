@@ -1,8 +1,9 @@
-import { Eye, FolderDown, Focus } from 'lucide-react';
+import { Eye, FolderDown, Focus, Palette } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
 import type { ModelStats, RenderMode, SceneHandle } from '../lib/scene';
+import { MaterialsPanel } from './MaterialsPanel';
 
 const modes: { mode: RenderMode; label: string; hint: string }[] = [
   { mode: 'lit', label: 'Lit (textures and lights)', hint: 'Textures and lights: the model as it is meant to look' },
@@ -27,6 +28,8 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const [saved, setSaved] = useState<string | null>(null);
+  // Kept open from one model to the next, like the render mode.
+  const [showMaterials, setShowMaterials] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -114,16 +117,33 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
             <Focus className="size-3.5" />
             Frame
           </button>
+          <button
+            type="button"
+            aria-pressed={showMaterials}
+            title="Each material's textures and why one is missing"
+            onClick={() => setShowMaterials(!showMaterials)}
+            className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
+              showMaterials ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            <Palette className="size-3.5" />
+            Materials
+          </button>
         </span>
       </div>
-      <div className="relative min-h-0 flex-1">
-        <div ref={host} className="absolute inset-0" />
-        {!stats && !error && (
-          <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">Loading model…</p>
-        )}
-        {error && (
-          <p className="absolute inset-0 grid place-items-center px-10 text-center text-xs text-destructive">{error}</p>
-        )}
+      <div className="flex min-h-0 flex-1">
+        <div className="relative min-w-0 flex-1">
+          <div ref={host} className="absolute inset-0" />
+          {!stats && !error && (
+            <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">Loading model…</p>
+          )}
+          {error && (
+            <p className="absolute inset-0 grid place-items-center px-10 text-center text-xs text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
+        {showMaterials && <MaterialsPanel glb={path} />}
       </div>
       <p className="h-6 shrink-0 border-t border-border bg-card px-3 text-xs leading-6 text-muted-foreground">
         Drag to orbit · right-drag to pan · wheel to zoom
