@@ -7,6 +7,7 @@ import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
+import { type Section, SectionTabs } from './components/SectionTabs';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { VehiclePreview } from './components/VehiclePreview';
@@ -84,7 +85,9 @@ export function App() {
   /** A file or resource opened in place of the list. */
   const [viewer, setViewer] = useState<Entry | null>(null);
   /** The vehicle catalog, shown in place of the list. */
-  const [vehiclesOpen, setVehiclesOpen] = useState(false);
+  const [section, setSection] = useState<Section>('explorer');
+  const vehiclesOpen = section === 'vehicles';
+  const setVehiclesOpen = (open: boolean) => setSection(open ? 'vehicles' : 'explorer');
   /** A vehicle of the catalog shown in 3D. */
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
@@ -361,23 +364,30 @@ export function App() {
         indexLabel={indexLabel}
         indexing={indexing !== null}
         onIndex={() => void runIndex()}
-        vehiclesOpen={vehiclesOpen}
-        onVehicles={() => {
-          setViewer(null);
-          setVehiclesOpen(true);
-        }}
       />
+      {root && (
+        <SectionTabs
+          current={section}
+          onSelect={(next) => {
+            setViewer(null);
+            setSection(next);
+          }}
+        />
+      )}
       {root && listing && rootCrumb ? (
         <div className="flex min-h-0 flex-1">
-          <FolderTree
-            root={{ name: rootCrumb.name, path: rootCrumb.path, kind: 'folder', size: 0, items: null }}
-            tree={tree}
-            expanded={expanded}
-            current={opening ?? (search ? searchCrumb : listing.path)}
-            onToggle={(path) => void toggleFolder(path)}
-            onNavigate={(path) => void navigate(path)}
-            onActivate={activate}
-          />
+          {/* The folder tree belongs to the explorer; the catalogs take the whole width. */}
+          {section === 'explorer' && (
+            <FolderTree
+              root={{ name: rootCrumb.name, path: rootCrumb.path, kind: 'folder', size: 0, items: null }}
+              tree={tree}
+              expanded={expanded}
+              current={opening ?? (search ? searchCrumb : listing.path)}
+              onToggle={(path) => void toggleFolder(path)}
+              onNavigate={(path) => void navigate(path)}
+              onActivate={activate}
+            />
+          )}
           {opening && (
             <ScanPanel
               name={opening.split(/[\\/]/).at(-1) ?? opening}

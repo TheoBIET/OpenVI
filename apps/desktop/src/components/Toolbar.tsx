@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ArrowUp, Car, ChevronRight, Database, FolderOpen, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ChevronRight, Database, FolderOpen, Search } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
 
 import type { Crumb } from '../lib/fs';
@@ -21,8 +21,6 @@ type ToolbarProps = {
   indexLabel: string | null;
   indexing: boolean;
   onIndex: () => void;
-  vehiclesOpen: boolean;
-  onVehicles: () => void;
 };
 
 function ToolButton({
@@ -74,9 +72,6 @@ export function Toolbar(props: ToolbarProps) {
             onClick={props.onIndex}
           >
             <span className="text-xs">{props.indexLabel}</span>
-          </ToolButton>
-          <ToolButton icon={Car} label="Vehicle catalog" disabled={props.vehiclesOpen} onClick={props.onVehicles}>
-            <span className="text-xs">Vehicles</span>
           </ToolButton>
         </>
       )}

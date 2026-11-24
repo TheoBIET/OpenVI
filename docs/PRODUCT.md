@@ -36,6 +36,10 @@ workbench**. The explorer is the product's backbone; every other feature is a vi
 
 - Layout like OpenIV: folder tree on the left, a details list grouped by type on the right, path bar and filter on
   top, status bar at the bottom.
+- Section tabs under the toolbar: Explorer (the layout above), then one tab per catalog of game data for a broader
+  audience: Vehicles, Characters, Weapons, Animations. Catalogs take the whole width (no folder tree) and open their
+  items in the same viewers as the explorer.
+- The 3D view plays the animations a model carries (clip, play and pause, time line, speed).
 - Tokens live in `apps/desktop/src/styles.css`; Monaco's theme (`src/lib/monaco.ts`) repeats them.
 - Type: Barlow (400–700) for all text, 14 px, line height 1.5; Barlow Condensed 700 for page titles and the logo
   (`font-display`: uppercase, 0.01em tracking, 0.95 line height); Barlow 600 for section titles (`font-title`); Geist

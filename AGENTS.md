@@ -18,7 +18,9 @@ Tauri 2 app, Rust backend, React 19 + Tailwind 4 UI, pnpm + turbo monorepo.
 
 - **Clean-room.** OpenVI reads unencrypted data and skips encrypted blocks untouched. Test fixtures are synthetic
   bytes. The repository holds no decryption code, keys, game files or extracted assets.
-- **Explorer first.** New features extend the explorer (a view, a panel, a column) in its dense, desktop-tool style.
+- **Explorer plus sections.** The explorer stays the dense, desktop-tool way into the files; game-data features that
+  are not about one file (vehicles, characters, weapons, animations) are sections (tabs) beside it. Both share the
+  viewers (properties panel, document view, 3D view).
 - **One door to the formats.** All game-format decoding goes through the backend's formats adapter, the only caller
   of `sixng-core`.
 - **Visual identity** follows `docs/PRODUCT.md`; colours come from the tokens in `src/styles.css`.
