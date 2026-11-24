@@ -3,6 +3,7 @@
   <h1>OpenVI</h1>
   <p><strong>An unofficial, open-source explorer and data-mining toolkit for GTA VI files, in the spirit of OpenIV.</strong></p>
   <p>Browse the folders and RPF9 archives of your own install, look inside them, and catalog what the game holds.</p>
+  <p><a href="https://theobiet.github.io/OpenVI/">Website</a> · <a href="https://github.com/TheoBIET/OpenVI/releases">Releases</a> · <a href="CHANGELOG.md">Changelog</a></p>
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-ff4f9a)](LICENSE)
 [![Status: early development](https://img.shields.io/badge/status-early%20development-ff8a4c)](#roadmap)
@@ -88,6 +89,8 @@ pnpm dev          # runs the desktop app with hot reload
 apps/desktop/          the app
   src/                 React UI (explorer components, lib/)
   src-tauri/           Rust backend: Tauri commands, file system access
+apps/site/             the GitHub Pages presentation page
+packages/theme/        shared visual identity (fonts, colour tokens)
 packages/typescript/   shared TypeScript configuration
 docs/                  architecture and legal notes
 ```

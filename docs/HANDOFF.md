@@ -133,7 +133,8 @@ carver cannot see, folders counted in the header, or the missing parts above.
    data-mining views of [PRODUCT.md](PRODUCT.md).
 4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
-5. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
+5. **Publishing**: green CI and a first tagged release (release workflow). The GitHub Pages site (`apps/site`,
+   deployed by `pages.yml`) is up; add screenshots once they exist (never from game files).
 
 ## Open questions for the maintainer
 

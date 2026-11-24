@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenVI</title>
+    <meta
+      name="description"
+      content="An unofficial, open-source explorer and data-mining toolkit for GTA VI files, in the spirit of OpenIV. Windows, macOS and Linux."
+    />
+    <meta name="theme-color" content="#121212" />
+    <meta property="og:title" content="OpenVI" />
+    <meta
+      property="og:description"
+      content="Open-source explorer and data-mining toolkit for GTA VI files: archives, 3D models, vehicles, characters, animations."
+    />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="stylesheet" href="/src/site.css" />
+  </head>
+  <body class="min-h-screen antialiased">
+    <header class="sticky top-0 z-10 border-b border-border/70 bg-background/80 backdrop-blur">
+      <nav class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6" aria-label="Main">
+        <a href="#top" class="flex items-center gap-2">
+          <img src="/logo.svg" alt="" class="size-7" />
+          <span class="text-accent-gradient font-display text-xl">OpenVI</span>
+        </a>
+        <div class="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
+          <a href="#features" class="hover:text-foreground">Features</a>
+          <a href="#status" class="hover:text-foreground">Status</a>
+          <a href="#start" class="hover:text-foreground">Get started</a>
+          <a href="#credits" class="hover:text-foreground">Credits</a>
+        </div>
+        <a
+          href="https://github.com/TheoBIET/OpenVI"
+          class="ml-auto flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary"
+        >
+          <i data-icon="github" class="size-4"></i>
+          GitHub
+        </a>
+      </nav>
+      <div class="h-px bg-accent-gradient opacity-60"></div>
+    </header>
+
+    <main id="top">
+      <section class="mx-auto max-w-6xl px-4 pt-20 pb-16 sm:px-6 sm:pt-28">
+        <div class="flex flex-col items-center text-center">
+          <img src="/logo.svg" alt="" class="mb-6 size-20 sm:size-24" />
+          <p class="mb-3 font-mono text-xs tracking-wide text-accent-solid uppercase">v%VERSION% · early development</p>
+          <h1 class="font-display text-6xl sm:text-8xl"><span class="text-accent-gradient">OpenVI</span></h1>
+          <p class="mt-5 max-w-2xl text-lg text-foreground sm:text-xl">
+            An unofficial, open-source explorer and data-mining toolkit for GTA&nbsp;VI files, in the spirit of OpenIV.
+          </p>
+          <p class="mt-3 max-w-2xl text-muted-foreground">
+            Browse the folders and RPF9 archives of your own install, look inside them in 3D, and catalog what the game
+            holds: vehicles, characters, animations, textures.
+          </p>
+          <div class="mt-8 flex flex-wrap justify-center gap-3">
+            <a
+              href="https://github.com/TheoBIET/OpenVI/releases"
+              class="flex items-center gap-2 rounded-lg bg-accent-gradient px-5 py-2.5 font-semibold text-on-accent hover:opacity-90"
+            >
+              <i data-icon="download" class="size-4"></i>
+              Download
+            </a>
+            <a
+              href="https://github.com/TheoBIET/OpenVI"
+              class="flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 font-semibold hover:bg-secondary"
+            >
+              <i data-icon="github" class="size-4"></i>
+              Source code
+            </a>
+          </div>
+          <ul class="mt-8 flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+            <li class="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1">
+              <i data-icon="monitor" class="size-3.5"></i>Windows · macOS · Linux
+            </li>
+            <li class="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1">
+              <i data-icon="scale" class="size-3.5"></i>GPL-3.0, free software
+            </li>
+            <li class="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1">
+              <i data-icon="shield-check" class="size-3.5"></i>Reads your files, never changes them
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-6xl px-4 sm:px-6" aria-label="How it reads the game">
+        <div class="flex gap-3 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground sm:p-5">
+          <i data-icon="shield-check" class="mt-0.5 size-5 shrink-0 text-highlight"></i>
+          <p>
+            OpenVI reads the unencrypted data of the files you own, entirely on your machine. It decrypts nothing, ships
+            no game files and uploads nothing. The archives' table of contents is encrypted, so inside an archive
+            resources are found by scanning its data and grouped by type, named where the data carries a name.
+          </p>
+        </div>
+      </section>
+
+      <section id="features" class="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <h2 class="font-display text-4xl sm:text-5xl">What it does</h2>
+        <p class="mt-2 max-w-2xl text-muted-foreground">
+          A dense desktop explorer first, with sections for the game's data beside it. A click previews in the right
+          pane, a double-click opens.
+        </p>
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="folder-tree" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Explorer</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Folder tree, details list grouped by type, path bar, filter, history and keyboard navigation, in the
+              OpenIV tradition.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="archive" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">RPF9 archives</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Open an archive like a folder: its resources by type (models, textures, text), with the names they carry.
+              The first scan is cached.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="search" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Search</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              A local SQLite index of every archive with full-text search: any part of a name finds it, and a result
+              opens its archive on the resource.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="box" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">3D viewer</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Drawables, fragments and dictionaries with their textures. Lit, Unlit, Clay, Normals and Wire modes, a
+              materials panel and an animation player.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="car" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Vehicles</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              The vehicle catalog: name, model, make, handling, mass, top speed, gears. Sortable, exported as CSV or
+              JSON, and each car in 3D in any of its configurations.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="person-standing" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Characters</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Every character and animal that can be assembled from its parts, shown in 3D. Wear one part per slot:
+              head, hair, top, bottom, feet.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="clapperboard" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Animations</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Clip dictionaries and their clips, played on a character or on its skeleton alone, with a time line and
+              speed from ×0.25 to ×2.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="image" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Textures and documents</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Textures decoded to PNG; text, XML and JSON in a code editor with highlighting and formatting.
+            </p>
+          </article>
+          <article class="rounded-xl border border-border bg-card p-5">
+            <i data-icon="file-down" class="size-6 text-primary"></i>
+            <h3 class="mt-3 font-title text-foreground">Exports</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Models and vehicles as glTF (GLB and textures), textures as PNG, raw resources, catalogs as CSV and JSON.
+              On your machine only.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="status" class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <h2 class="font-display text-4xl sm:text-5xl">Status</h2>
+        <p class="mt-2 max-w-2xl text-muted-foreground">
+          OpenVI is young and moves fast. The
+          <a href="https://github.com/TheoBIET/OpenVI/blob/main/CHANGELOG.md" class="text-primary hover:underline"
+            >changelog</a
+          >
+          lists every release.
+        </p>
+        <div class="mt-8 overflow-hidden rounded-xl border border-border">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-card text-muted-foreground">
+              <tr>
+                <th scope="col" class="px-4 py-2.5 font-medium">Feature</th>
+                <th scope="col" class="w-36 px-4 py-2.5 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              <tr>
+                <td class="px-4 py-2.5">Explorer: folders, archives, resources by type, recovered names</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-highlight"
+                    ><i data-icon="check" class="size-4"></i>Done</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Search across the whole index by name</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-highlight"
+                    ><i data-icon="check" class="size-4"></i>Done</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Viewers: 3D models, textures, text and XML</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-highlight"
+                    ><i data-icon="check" class="size-4"></i>Done</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Sections: vehicles, characters, animations</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-highlight"
+                    ><i data-icon="check" class="size-4"></i>Done</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Weapons, missions and hidden content</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-warning"
+                    ><i data-icon="circle-dashed" class="size-4"></i>Next</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Audio playback, search in game text and hashes</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-muted-foreground"
+                    ><i data-icon="clock" class="size-4"></i>Planned</span
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5">Map viewer in the spirit of CodeWalker</td>
+                <td class="px-4 py-2.5">
+                  <span class="flex items-center gap-1.5 text-muted-foreground"
+                    ><i data-icon="clock" class="size-4"></i>Later</span
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="start" class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <h2 class="font-display text-4xl sm:text-5xl">Get started</h2>
+        <div class="mt-8 grid gap-4 lg:grid-cols-2">
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-2">
+              <i data-icon="download" class="size-5 text-primary"></i>
+              <h3 class="font-title text-foreground">Download</h3>
+            </div>
+            <p class="mt-2 text-sm text-muted-foreground">
+              Installers for Windows, macOS (Apple silicon and Intel) and Linux are published on GitHub Releases. They
+              are not signed yet: Windows SmartScreen and macOS Gatekeeper will ask you to confirm the first launch.
+            </p>
+            <p class="mt-3 text-sm text-muted-foreground">
+              Open the folder of your GTA&nbsp;VI install, then browse it, or pick a section: Vehicles, Characters,
+              Animations.
+            </p>
+            <a
+              href="https://github.com/TheoBIET/OpenVI/releases"
+              class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+            >
+              GitHub Releases <i data-icon="arrow-right" class="size-4"></i>
+            </a>
+          </div>
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-2">
+              <i data-icon="terminal" class="size-5 text-primary"></i>
+              <h3 class="font-title text-foreground">Build from source</h3>
+            </div>
+            <p class="mt-2 text-sm text-muted-foreground">
+              Node.js 26, pnpm 12, Rust 1.90 and the
+              <a href="https://v2.tauri.app/start/prerequisites/" class="text-primary hover:underline"
+                >Tauri 2 prerequisites</a
+              >.
+            </p>
+            <pre
+              class="mt-3 overflow-x-auto rounded-lg border border-border bg-background p-3 font-mono text-xs leading-relaxed"
+            ><code>git clone https://github.com/TheoBIET/OpenVI.git
+cd OpenVI
+pnpm install
+pnpm dev</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="credits" class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <h2 class="font-display text-4xl sm:text-5xl">Credits</h2>
+        <div class="mt-6 grid gap-4 text-sm text-muted-foreground lg:grid-cols-2">
+          <p>
+            OpenVI stands on the research of the GTA&nbsp;VI reverse-engineering community, in particular
+            <a href="https://github.com/holdmysocks/SixNG" class="text-primary hover:underline">SixNG</a>, whose format
+            decoders are OpenVI's core, and
+            <a
+              href="https://github.com/Ahmet-Dedeler/awesome-gta6-reverse-engineering"
+              class="text-primary hover:underline"
+              >awesome-gta6-reverse-engineering</a
+            >. The explorer's layout pays tribute to
+            <a href="https://openiv.com" class="text-primary hover:underline">OpenIV</a>.
+          </p>
+          <p>
+            Developed by AI agents (<a href="https://claude.com/claude-code" class="text-primary hover:underline"
+              >Claude Code</a
+            >) under a maintainer who decides what is built and tests it. Contributions are welcome: read the
+            <a href="https://github.com/TheoBIET/OpenVI/blob/main/CONTRIBUTING.md" class="text-primary hover:underline"
+              >contributing guide</a
+            >
+            first.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-border">
+      <div class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-xs text-muted-foreground sm:px-6">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="text-accent-gradient font-display text-base">OpenVI</span>
+          <a href="https://github.com/TheoBIET/OpenVI/blob/main/LICENSE" class="hover:text-foreground">GPL-3.0-only</a>
+          <a href="https://github.com/TheoBIET/OpenVI/blob/main/docs/LEGAL.md" class="hover:text-foreground"
+            >Legal notes</a
+          >
+          <a href="https://github.com/TheoBIET/OpenVI/blob/main/CHANGELOG.md" class="hover:text-foreground"
+            >Changelog</a
+          >
+        </div>
+        <p>
+          OpenVI is an unofficial fan project, not affiliated with, endorsed by or sponsored by Rockstar Games, Take-Two
+          Interactive or the OpenIV team. Grand Theft Auto and related names are trademarks of their respective owners.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
