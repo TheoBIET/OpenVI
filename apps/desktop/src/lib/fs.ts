@@ -16,6 +16,8 @@ export type Entry = {
   offset?: number;
   /** A resource's type, as the "Type" column shows it. */
   typeName?: string;
+  /** For a search result: the archive holding the resource, from the game folder. */
+  location?: string;
 };
 
 export type Crumb = { name: string; path: string };

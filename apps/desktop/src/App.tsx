@@ -8,6 +8,7 @@ import { ScanPanel } from './components/ScanPanel';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import {
+  type Crumb,
   type Entry,
   isArchivePath,
   isTreeEntry,
@@ -17,10 +18,36 @@ import {
   onArchiveProgress,
   type ScanProgress,
 } from './lib/fs';
+import {
+  archiveOf,
+  indexGame,
+  type IndexProgress,
+  type IndexStatus,
+  indexStatus,
+  onIndexProgress,
+  searchIndex,
+} from './lib/index';
 
 const lastFolderKey = 'openvi.lastGameFolder';
 
+/** Path of the breadcrumb that stands for search results; it is not a place to navigate to. */
+const searchCrumb = '#search';
+
 type History = { stack: string[]; index: number };
+
+type Search = { query: string; entries: Entry[]; truncated: boolean };
+
+function percent(done: number, total: number): string {
+  return `${Math.round((done * 100) / Math.max(total, 1))}%`;
+}
+
+function describeIndexing(step: IndexProgress): string {
+  if (step.count === 0) return 'Indexing: listing archives…';
+  const where = `Indexing ${step.archive} (${step.position}/${step.count})`;
+  if (step.phase === 'carving') return `${where} · finding resources ${percent(step.done, step.total)}`;
+  if (step.phase === 'naming') return `${where} · reading names ${percent(step.done, step.total)}`;
+  return where;
+}
 
 export function App() {
   const [root, setRoot] = useState<string | null>(null);
@@ -35,6 +62,11 @@ export function App() {
   /** The archive being opened, while its listing is on its way. */
   const [opening, setOpening] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
+  /** Search results replace the listing until the user navigates. */
+  const [search, setSearch] = useState<Search | null>(null);
+  const [status, setStatus] = useState<IndexStatus | null>(null);
+  /** Non-null while an indexing pass runs. */
+  const [indexing, setIndexing] = useState<IndexProgress | null>(null);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
 
@@ -46,6 +78,8 @@ export function App() {
     setProgress(null);
     try {
       const next = await listPath(rootPath, path);
+      // Opening an archive also stores it in the index.
+      if (archive) void refreshStatus(rootPath);
       return ticket === latest.current ? next : null;
     } catch (failure) {
       if (ticket === latest.current) setError(String(failure));
@@ -55,12 +89,21 @@ export function App() {
     }
   }
 
-  /** Shows `next` in the list and opens its ancestors in the tree. */
-  function show(next: Listing) {
+  async function refreshStatus(rootPath: string) {
+    try {
+      setStatus(await indexStatus(rootPath));
+    } catch {
+      setStatus(null);
+    }
+  }
+
+  /** Shows `next` in the list, with `select` selected, and opens its ancestors in the tree. */
+  function show(next: Listing, select: string | null = null) {
     setListing(next);
+    setSearch(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
-    setSelected(null);
+    setSelected(select);
     setFilter('');
     setNotice(null);
     setError(null);
@@ -78,6 +121,7 @@ export function App() {
     setExpanded(new Set());
     show(next);
     setHistory({ stack: [next.path], index: 0 });
+    void refreshStatus(next.path);
   }
 
   async function chooseGameFolder() {
@@ -85,11 +129,15 @@ export function App() {
     if (typeof path === 'string') await openGameFolder(path);
   }
 
-  async function navigate(path: string) {
-    if (!root || path === listing?.path) return;
+  async function navigate(path: string, select: string | null = null) {
+    if (!root || path === searchCrumb) return;
+    if (path === listing?.path && !search) {
+      if (select) setSelected(select);
+      return;
+    }
     const next = await load(root, path);
     if (!next) return;
-    show(next);
+    show(next, select);
     setHistory((previous) => {
       const stack = [...previous.stack.slice(0, previous.index + 1), next.path];
       return { stack, index: stack.length - 1 };
@@ -97,6 +145,14 @@ export function App() {
   }
 
   async function travel(step: -1 | 1) {
+    // Back from search results returns to the listing they replaced.
+    if (search && step === -1) {
+      setSearch(null);
+      setFilter('');
+      setSelected(null);
+      setNotice(null);
+      return;
+    }
     const index = history.index + step;
     const path = history.stack[index];
     if (!root || path === undefined) return;
@@ -126,9 +182,54 @@ export function App() {
     setExpanded((previous) => new Set(previous).add(path));
   }
 
+  async function runSearch(text: string) {
+    const query = text.trim();
+    if (!root || !query) return;
+    try {
+      const view = await searchIndex(root, query);
+      setSearch({ query, ...view });
+      setSelected(null);
+      setError(null);
+      if (view.truncated) {
+        setNotice(`Showing the first ${view.entries.length.toLocaleString('en-US')} matches; refine the search.`);
+      } else if (view.entries.length > 0) {
+        setNotice(null);
+      } else if (status?.archives) {
+        setNotice(`No indexed resource has “${query}” in its name.`);
+      } else {
+        setNotice('The index is empty: click Index to scan every archive, or open archives one by one.');
+      }
+    } catch (failure) {
+      setError(String(failure));
+    }
+  }
+
+  async function runIndex() {
+    if (!root || indexing) return;
+    setIndexing({ archive: '', position: 0, count: 0, phase: null, done: 0, total: 0 });
+    setNotice(null);
+    try {
+      const report = await indexGame(root);
+      const parts = [
+        `Index up to date: ${report.indexed} archive${report.indexed === 1 ? '' : 's'} scanned`,
+        `${report.unchanged} unchanged`,
+      ];
+      if (report.failed.length > 0) parts.push(`${report.failed.length} failed (${report.failed[0]})`);
+      setNotice(parts.join(', '));
+    } catch (failure) {
+      setError(String(failure));
+    } finally {
+      setIndexing(null);
+      void refreshStatus(root);
+    }
+  }
+
   function activate(entry: Entry) {
     if (entry.kind === 'folder' || entry.kind === 'archive') {
       void navigate(entry.path);
+    } else if (entry.location !== undefined) {
+      // A search result opens its archive with the resource selected.
+      void navigate(archiveOf(entry.path), entry.path);
     } else if (entry.kind === 'resource') {
       setSelected(entry.path);
       setNotice(`Previews are not available yet: ${entry.name} will open once the viewers ship.`);
@@ -142,27 +243,44 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const unlisten = onArchiveProgress(setProgress);
-    return () => void unlisten.then((stop) => stop());
+    const archive = onArchiveProgress(setProgress);
+    const index = onIndexProgress(setIndexing);
+    return () => {
+      void archive.then((stop) => stop());
+      void index.then((stop) => stop());
+    };
   }, []);
 
+  const entries = search?.entries ?? listing?.entries;
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    const entries = listing?.entries ?? [];
-    return needle ? entries.filter((entry) => entry.name.toLowerCase().includes(needle)) : entries;
-  }, [listing, filter]);
+    const all = entries ?? [];
+    return needle ? all.filter((entry) => entry.name.toLowerCase().includes(needle)) : all;
+  }, [entries, filter]);
 
   const rootCrumb = listing?.crumbs[0];
-  const parent = listing?.crumbs.at(-2);
-  const selectedEntry = listing?.entries.find((entry) => entry.path === selected);
+  const parent = search ? undefined : listing?.crumbs.at(-2);
+  const selectedEntry = entries?.find((entry) => entry.path === selected);
+  const crumbs: Crumb[] =
+    search && rootCrumb
+      ? [rootCrumb, { name: `Search “${search.query}”`, path: searchCrumb }]
+      : (listing?.crumbs ?? []);
+  let indexText: string | null = null;
+  if (indexing) indexText = describeIndexing(indexing);
+  else if (status) {
+    indexText = `${status.archives.toLocaleString('en-US')} archives indexed · ${status.named.toLocaleString('en-US')} names`;
+  }
+
+  let indexLabel: string | null = null;
+  if (root) indexLabel = indexing ? `Indexing ${indexing.position}/${indexing.count}` : 'Index';
 
   return (
     <div className="flex h-full flex-col">
       <div className="h-0.5 shrink-0 bg-linear-to-r from-flamingo via-sunset to-gold" />
       <Toolbar
-        crumbs={listing?.crumbs ?? []}
+        crumbs={crumbs}
         filter={filter}
-        canBack={history.index > 0}
+        canBack={search !== null || history.index > 0}
         canForward={history.index < history.stack.length - 1}
         canUp={parent !== undefined}
         onBack={() => void travel(-1)}
@@ -170,7 +288,11 @@ export function App() {
         onUp={() => parent && void navigate(parent.path)}
         onNavigate={(path) => void navigate(path)}
         onFilter={setFilter}
+        onSearch={(query) => void runSearch(query)}
         onOpenFolder={() => void chooseGameFolder()}
+        indexLabel={indexLabel}
+        indexing={indexing !== null}
+        onIndex={() => void runIndex()}
       />
       {root && listing && rootCrumb ? (
         <div className="flex min-h-0 flex-1">
@@ -178,7 +300,7 @@ export function App() {
             root={{ name: rootCrumb.name, path: rootCrumb.path, kind: 'folder', size: 0, items: null }}
             tree={tree}
             expanded={expanded}
-            current={listing.path}
+            current={search ? searchCrumb : listing.path}
             onToggle={(path) => void toggleFolder(path)}
             onNavigate={(path) => void navigate(path)}
             onActivate={activate}
@@ -194,7 +316,7 @@ export function App() {
               selected={selected}
               onSelect={setSelected}
               onActivate={activate}
-              onUp={() => parent && void navigate(parent.path)}
+              onUp={() => (search ? void travel(-1) : parent && void navigate(parent.path))}
             />
           )}
         </div>
@@ -205,6 +327,7 @@ export function App() {
         shown={visible.length}
         selected={selectedEntry}
         notice={notice ?? (listing ? error : null)}
+        index={indexText}
         folderName={rootCrumb?.name}
       />
     </div>

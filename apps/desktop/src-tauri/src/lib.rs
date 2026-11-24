@@ -2,13 +2,21 @@
 
 mod archive;
 mod fs;
+mod index;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![fs::list_dir, archive::open_archive])
+        .manage(index::Indexing::default())
+        .invoke_handler(tauri::generate_handler![
+            fs::list_dir,
+            archive::open_archive,
+            index::index_game,
+            index::search_index,
+            index::index_status
+        ])
         .run(tauri::generate_context!())
         .expect("error while running OpenVI");
 }

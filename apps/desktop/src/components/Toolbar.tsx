@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ArrowUp, ChevronRight, FolderOpen, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ChevronRight, Database, FolderOpen, Search } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
 
 import type { Crumb } from '../lib/fs';
@@ -14,7 +14,13 @@ type ToolbarProps = {
   onUp: () => void;
   onNavigate: (path: string) => void;
   onFilter: (text: string) => void;
+  /** Enter in the filter box: search every indexed archive. */
+  onSearch: (query: string) => void;
   onOpenFolder: () => void;
+  /** Null when no game folder is open. */
+  indexLabel: string | null;
+  indexing: boolean;
+  onIndex: () => void;
 };
 
 function ToolButton({
@@ -56,6 +62,19 @@ export function Toolbar(props: ToolbarProps) {
       <ToolButton icon={ArrowLeft} label="Back" disabled={!props.canBack} onClick={props.onBack} />
       <ToolButton icon={ArrowRight} label="Forward" disabled={!props.canForward} onClick={props.onForward} />
       <ToolButton icon={ArrowUp} label="Up one level" disabled={!props.canUp} onClick={props.onUp} />
+      {props.indexLabel !== null && (
+        <>
+          <span className="h-5 w-px bg-ink-800" />
+          <ToolButton
+            icon={Database}
+            label="Scan every archive into the index, for search"
+            disabled={props.indexing}
+            onClick={props.onIndex}
+          >
+            <span className="text-xs">{props.indexLabel}</span>
+          </ToolButton>
+        </>
+      )}
 
       <nav
         aria-label="Path"
@@ -77,12 +96,16 @@ export function Toolbar(props: ToolbarProps) {
         ))}
       </nav>
 
-      <label className="flex h-7 w-64 items-center gap-2 rounded border border-ink-800 bg-ink-950 px-2 focus-within:border-flamingo/60">
+      <label className="flex h-7 w-72 items-center gap-2 rounded border border-ink-800 bg-ink-950 px-2 focus-within:border-flamingo/60">
         <Search className="size-3.5 shrink-0 text-ink-400" />
         <input
           value={props.filter}
           onChange={(event) => props.onFilter(event.target.value)}
-          placeholder={current ? `Filter ${current.name}` : 'Filter'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') props.onSearch(props.filter);
+          }}
+          placeholder={current ? `Filter ${current.name} · Enter searches all` : 'Filter'}
+          title="Type to filter this list; press Enter to search every indexed archive"
           spellCheck={false}
           className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-ink-400"
         />

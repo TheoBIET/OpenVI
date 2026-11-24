@@ -1,5 +1,6 @@
 //! Directory listings for the explorer, confined to the game folder the user opened.
 
+use std::borrow::Cow;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -38,7 +39,10 @@ pub struct Entry {
     pub(crate) offset: Option<u64>,
     /// A resource's type, as the explorer's "Type" column shows it.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) type_name: Option<&'static str>,
+    pub(crate) type_name: Option<Cow<'static, str>>,
+    /// For a search result: the archive holding the resource, from the game folder.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) location: Option<String>,
 }
 
 /// Declaration order is the explorer's sort order.
@@ -127,6 +131,7 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 items,
                 offset: None,
                 type_name: None,
+                location: None,
             });
         } else if file_type.is_file() {
             let kind = if is_archive(&entry_path) {
@@ -142,6 +147,7 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 items: None,
                 offset: None,
                 type_name: None,
+                location: None,
             });
         }
     }

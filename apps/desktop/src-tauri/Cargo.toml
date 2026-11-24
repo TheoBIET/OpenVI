@@ -25,6 +25,7 @@ serde = { version = "1", features = ["derive"] }
 dunce = "1"
 anyhow = "1"
 openvi-formats = { path = "../../../crates/openvi-formats" }
+openvi-index = { path = "../../../crates/openvi-index" }
 
 [dev-dependencies]
 openvi-formats = { path = "../../../crates/openvi-formats", features = ["fixtures"] }

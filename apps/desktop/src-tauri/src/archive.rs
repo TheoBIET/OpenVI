@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, ensure};
 use openvi_formats::{ScanPhase, scan_archive};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 use crate::fs::{Entry, EntryKind, Listing, Located, is_archive, locate};
+use crate::index;
 
 /// Event sent while an archive is scanned for the first time.
 pub const PROGRESS_EVENT: &str = "archive-progress";
@@ -28,14 +29,11 @@ struct ScanProgress {
 /// app's cache folder, so later openings answer at once.
 #[tauri::command]
 pub async fn open_archive(app: AppHandle, root: PathBuf, path: PathBuf) -> Result<Listing, String> {
-    let cache = app
-        .path()
-        .app_cache_dir()
-        .map_err(|error| error.to_string())?
-        .join("archives");
+    let cache = index::cache_dir(&app)?;
+    let database = index::database(&app, &index::canonical_root(&root)?)?;
     tauri::async_runtime::spawn_blocking(move || {
         let archive = path.clone();
-        archive_listing(&root, &path, &cache, move |phase, done, total| {
+        archive_listing(&root, &path, &cache, Some(&database), move |phase, done, total| {
             let progress = ScanProgress {
                 archive: archive.clone(),
                 phase,
@@ -55,6 +53,7 @@ fn archive_listing(
     root: &Path,
     path: &Path,
     cache: &Path,
+    database: Option<&Path>,
     progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
 ) -> Result<Listing> {
     let Located { path, relative, crumbs } = locate(root, path)?;
@@ -65,6 +64,12 @@ fn archive_listing(
     );
 
     let scan = scan_archive(&path, &relative, cache, progress)?;
+    if let Some(database) = database {
+        // The listing does not depend on the index: a failure to record it only shows in the log.
+        if let Err(error) = index::record(database, &path, &relative, &scan) {
+            eprintln!("could not index {relative}: {error:#}");
+        }
+    }
     let mut entries: Vec<Entry> = scan
         .entries
         .iter()
@@ -79,14 +84,15 @@ fn archive_listing(
             size: resource.size,
             items: None,
             offset: Some(resource.offset),
-            type_name: Some(resource.type_name()),
+            type_name: Some(resource.type_name().into()),
+            location: None,
         })
         .collect();
     // By type, named resources by name, then unnamed ones by offset.
     entries.sort_by_cached_key(|entry| {
         let unnamed = entry.name.starts_with("0x");
         (
-            entry.type_name,
+            entry.type_name.clone(),
             unnamed,
             if unnamed {
                 String::new()
@@ -119,14 +125,20 @@ mod tests {
     #[test]
     fn lists_an_archive_by_type_with_recovered_names() {
         let (root, offsets) = game_folder("list");
-        let result = archive_listing(&root, &root.join("common.rpf"), &root.join("cache"), |_, _, _| {});
+        let result = archive_listing(&root, &root.join("common.rpf"), &root.join("cache"), None, |_, _, _| {});
         std::fs::remove_dir_all(&root).unwrap();
 
         let listing = result.unwrap();
         let rows: Vec<_> = listing
             .entries
             .iter()
-            .map(|entry| (entry.type_name.unwrap(), entry.name.as_str(), entry.offset.unwrap()))
+            .map(|entry| {
+                (
+                    entry.type_name.as_deref().unwrap(),
+                    entry.name.as_str(),
+                    entry.offset.unwrap(),
+                )
+            })
             .collect();
         let dds = format!("{:#x}", offsets[0]);
         let png = format!("{:#x}", offsets[1]);
@@ -148,9 +160,31 @@ mod tests {
     }
 
     #[test]
+    fn opening_an_archive_records_it_in_the_index() {
+        let (root, _) = game_folder("record");
+        let database = root.join("cache").join("index.sqlite");
+        let listed = archive_listing(
+            &root,
+            &root.join("common.rpf"),
+            &root.join("cache"),
+            Some(&database),
+            |_, _, _| {},
+        );
+        let found = openvi_index::Index::open(&database)
+            .unwrap()
+            .search(fixtures::OBJECT_NAME, 10);
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert!(listed.is_ok());
+        let hits = found.unwrap().hits;
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].archive, "common.rpf");
+    }
+
+    #[test]
     fn refuses_a_file_that_is_not_an_archive() {
         let (root, _) = game_folder("not-archive");
-        let result = archive_listing(&root, &root.join("eboot.bin"), &root.join("cache"), |_, _, _| {});
+        let result = archive_listing(&root, &root.join("eboot.bin"), &root.join("cache"), None, |_, _, _| {});
         std::fs::remove_dir_all(&root).unwrap();
 
         assert!(result.unwrap_err().to_string().contains("is not an archive"));
@@ -164,6 +198,7 @@ mod tests {
             &root.join("pack"),
             &root.join("common.rpf"),
             &root.join("cache"),
+            None,
             |_, _, _| {},
         );
         std::fs::remove_dir_all(&root).unwrap();

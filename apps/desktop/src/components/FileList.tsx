@@ -17,6 +17,22 @@ type Group = { label: string; entries: Entry[] };
 /** One line of the list: a group header or an entry, at a fixed height so only the visible lines are rendered. */
 type Line = { top: number; header: Group; entry?: undefined } | { top: number; entry: Entry; header?: undefined };
 
+/** The column after Size: offsets in an archive, the archive in search results. */
+type Extra = 'offset' | 'archive' | null;
+
+const extraColumns = {
+  none: 'grid-cols-[minmax(0,1fr)_11rem_7rem]',
+  offset: 'grid-cols-[minmax(0,1fr)_11rem_7rem_7rem]',
+  archive: 'grid-cols-[minmax(0,1fr)_11rem_7rem_minmax(0,16rem)]',
+};
+
+/** Search results show where each resource lives; an archive listing shows offsets. */
+function extraOf(entries: Entry[]): Extra {
+  if (entries.some((entry) => entry.location !== undefined)) return 'archive';
+  if (entries.some((entry) => entry.offset !== undefined)) return 'offset';
+  return null;
+}
+
 const headerHeight = 32;
 const rowHeight = 24;
 /** Lines rendered above and below the viewport, so fast scrolling does not show blanks. */
@@ -71,10 +87,8 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
   const groups = useMemo(() => groupByType(entries), [entries]);
   const ordered = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
   const { lines, height } = useMemo(() => layOut(groups), [groups]);
-  const inArchive = entries.some((entry) => entry.offset !== undefined);
-  const columns = `grid ${
-    inArchive ? 'grid-cols-[minmax(0,1fr)_11rem_7rem_7rem]' : 'grid-cols-[minmax(0,1fr)_11rem_7rem]'
-  } items-center gap-4`;
+  const extra = extraOf(entries);
+  const columns = `grid ${extraColumns[extra ?? 'none']} items-center gap-4`;
 
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 0 });
@@ -89,9 +103,12 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
     return () => observer.disconnect();
   }, []);
 
-  // A new listing or filter starts at the top.
+  // A new listing or filter starts at the top, or at the selection when one was given with it.
   useEffect(() => {
-    scroller.current?.scrollTo({ top: 0 });
+    const element = scroller.current;
+    if (!element) return;
+    const line = selected ? lines.find((candidate) => candidate.entry?.path === selected) : undefined;
+    element.scrollTop = line ? Math.max(line.top - element.clientHeight / 2, 0) : 0;
   }, [entries]);
 
   function reveal(path: string) {
@@ -137,7 +154,8 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
         <span>Name</span>
         <span>Type</span>
         <span className="text-right">Size</span>
-        {inArchive && <span className="text-right">Offset</span>}
+        {extra === 'offset' && <span className="text-right">Offset</span>}
+        {extra === 'archive' && <span>Archive</span>}
       </div>
       <div
         ref={scroller}
@@ -167,7 +185,7 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
                 entry={line.entry}
                 top={line.top}
                 columns={columns}
-                inArchive={inArchive}
+                extra={extra}
                 selected={line.entry.path === selected}
                 onSelect={onSelect}
                 onActivate={onActivate}
@@ -184,7 +202,7 @@ function Row({
   entry,
   top,
   columns,
-  inArchive,
+  extra,
   selected,
   onSelect,
   onActivate,
@@ -192,7 +210,7 @@ function Row({
   entry: Entry;
   top: number;
   columns: string;
-  inArchive: boolean;
+  extra: Extra;
   selected: boolean;
   onSelect: (path: string) => void;
   onActivate: (entry: Entry) => void;
@@ -218,11 +236,12 @@ function Row({
       <span className="text-right font-mono text-xs text-ink-400 tabular-nums">
         {entry.kind === 'folder' ? `${entry.items ?? '?'} items` : formatSize(entry.size)}
       </span>
-      {inArchive && (
+      {extra === 'offset' && (
         <span className="text-right font-mono text-xs text-ink-400 tabular-nums">
           {entry.offset === undefined ? '' : formatOffset(entry.offset)}
         </span>
       )}
+      {extra === 'archive' && <span className="truncate text-ink-400">{entry.location}</span>}
     </div>
   );
 }
