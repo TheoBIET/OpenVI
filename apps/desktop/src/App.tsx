@@ -76,12 +76,15 @@ export function App() {
   const [viewer, setViewer] = useState<Entry | null>(null);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
+  /** The archive being opened, for the progress listener (which outlives renders). */
+  const openingRef = useRef<string | null>(null);
 
   /** Lists a folder or an archive; null when it failed or a later navigation superseded it. */
   async function load(rootPath: string, path: string): Promise<Listing | null> {
     const ticket = ++latest.current;
     const archive = isArchivePath(path);
-    setOpening(archive ? path : null);
+    openingRef.current = archive ? path : null;
+    setOpening(openingRef.current);
     setProgress(null);
     try {
       const next = await listPath(rootPath, path);
@@ -92,7 +95,10 @@ export function App() {
       if (ticket === latest.current) setError(String(failure));
       return null;
     } finally {
-      if (ticket === latest.current) setOpening(null);
+      if (ticket === latest.current) {
+        openingRef.current = null;
+        setOpening(null);
+      }
     }
   }
 
@@ -261,7 +267,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const archive = onArchiveProgress(setProgress);
+    // A scan cannot be stopped: one left behind by a newer navigation keeps reporting, and only the archive
+    // being opened may drive the scan panel.
+    const archive = onArchiveProgress((step) => {
+      if (step.archive === openingRef.current) setProgress(step);
+    });
     const index = onIndexProgress(setIndexing);
     return () => {
       void archive.then((stop) => stop());
@@ -324,7 +334,7 @@ export function App() {
             root={{ name: rootCrumb.name, path: rootCrumb.path, kind: 'folder', size: 0, items: null }}
             tree={tree}
             expanded={expanded}
-            current={search ? searchCrumb : listing.path}
+            current={opening ?? (search ? searchCrumb : listing.path)}
             onToggle={(path) => void toggleFolder(path)}
             onNavigate={(path) => void navigate(path)}
             onActivate={activate}
