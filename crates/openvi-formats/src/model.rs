@@ -16,6 +16,30 @@ use crate::{ScanPhase, scan_archive};
 /// The archive holding the vehicle models.
 pub const VEHICLE_MODELS: &str = "levels.rpf";
 
+/// The state of the file at `path` on disk, as a folder name: its size and modification time in hex. Exports go
+/// under it, so an archive that changes (a download finishing, a game update) gets fresh exports instead of stale ones.
+fn version(path: &Path) -> String {
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return "missing".into();
+    };
+    let mtime = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |duration| duration.as_secs());
+    format!("{:x}-{mtime:x}", metadata.len())
+}
+
+/// Whether `output` is missing or older than any of `inputs` that exist.
+fn stale(output: &Path, inputs: &[PathBuf]) -> bool {
+    let modified = |path: &Path| std::fs::metadata(path).and_then(|m| m.modified()).ok();
+    let Some(built) = modified(output) else { return true };
+    inputs
+        .iter()
+        .filter_map(|input| modified(input))
+        .any(|changed| changed > built)
+}
+
 /// Export options: PNG textures (textures embedded in models included), nothing else.
 fn options(out: &Path, force: bool) -> Result<ExportOptions> {
     Ok(serde_json::from_value(json!({
@@ -42,7 +66,7 @@ pub fn model_glb(game_root: &Path, work_dir: &Path, archive_id: &str, offset: u6
         .with_context(|| format!("no resource at {offset:#x} in {archive_id}"))?;
     anyhow::ensure!(is_model(entry), "the resource at {offset:#x} is not a model");
 
-    let out = work_dir.join("models");
+    let out = work_dir.join("models").join(version(&archive.path));
     // An earlier export is reused ("skipped" lists no files); export again only when its files cannot be found.
     for force in [false, true] {
         let items = export_many(&archive, &[entry], &options(&out, force)?, Arc::new(|_, _, _| {}))?;
@@ -71,8 +95,14 @@ pub fn vehicle_glb(
     progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
 ) -> Result<PathBuf> {
     let model = model.to_ascii_lowercase();
+    let sources = format!(
+        "{}_{}",
+        version(&game_root.join(VEHICLE_MODELS)),
+        version(&game_root.join("packs.rpf"))
+    );
     let out = work_dir
         .join("vehicles")
+        .join(sources)
         .join(format!("{model}_{config}"))
         .join(format!("{model}.glb"));
     if out.is_file() {
@@ -82,7 +112,8 @@ pub fn vehicle_glb(
     let workspace = Workspace::new(game_root, work_dir);
     let catalog = work_dir.join("catalog");
     let tables = catalog.join("vehicles").join("vehicles.json");
-    if !tables.is_file() {
+    // Built from packs.rpf (and data.rpf for names): rebuilt when either changed since.
+    if stale(&tables, &[game_root.join("packs.rpf"), game_root.join("data.rpf")]) {
         vehicles::build(&workspace, &catalog)?;
     }
     let all: Value = serde_json::from_slice(&std::fs::read(&tables)?)?;
@@ -162,6 +193,28 @@ mod tests {
         std::fs::remove_dir_all(&root).unwrap();
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn a_changed_archive_gets_its_own_export_folder() {
+        let dir = std::env::temp_dir().join(format!("openvi-model-version-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let archive = dir.join("levels.rpf");
+        std::fs::write(&archive, [0u8; 16]).unwrap();
+        let before = version(&archive);
+        let fresh_output = dir.join("vehicles.json");
+        std::fs::write(&fresh_output, b"{}").unwrap();
+        let up_to_date = !stale(&fresh_output, &[archive.clone(), dir.join("absent.rpf")]);
+        std::fs::write(&archive, [0u8; 32]).unwrap();
+        let after = version(&archive);
+        let missing = version(&dir.join("absent.rpf"));
+        let no_output = stale(&dir.join("none.json"), &[archive]);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        assert_ne!(before, after);
+        assert!(before.starts_with("10-") && after.starts_with("20-"));
+        assert_eq!(missing, "missing");
+        assert!(up_to_date && no_output);
     }
 
     #[test]
