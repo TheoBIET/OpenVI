@@ -2,6 +2,12 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.2.1 (2026-11-24)
+
+- Opening an archive while another is still being scanned no longer makes the scan panel jump between the two; the
+  tree highlights the archive being opened at once.
+- One scan per archive at a time: reopening or indexing an archive during its scan waits for it and reads its cache.
+
 ## 0.2.0 (2026-11-24)
 
 - Archive view: double-clicking an `.rpf` opens it like a folder. Resources are found by scanning the unencrypted
