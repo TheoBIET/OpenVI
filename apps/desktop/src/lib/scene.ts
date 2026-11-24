@@ -5,11 +5,36 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export type ModelStats = { meshes: number; triangles: number; size: [number, number, number] };
 
-export type SceneHandle = { dispose: () => void; setWireframe: (on: boolean) => void; frame: () => void };
+/**
+ * How the model is drawn: `lit` its own materials (textures and lights), `unlit` its textures without lighting,
+ * `clay` plain grey shaded by the lights (shape only), `normals` surface directions as colours, `wireframe` the
+ * triangle edges.
+ */
+export type RenderMode = 'lit' | 'unlit' | 'clay' | 'normals' | 'wireframe';
 
-/** Materials of a mesh, whether it has one or several. */
-function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
-  return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+export type SceneHandle = { dispose: () => void; setMode: (mode: RenderMode) => void; frame: () => void };
+
+/** Materials the other modes swap in, made once per scene. */
+function modeMaterials() {
+  return {
+    clay: new THREE.MeshStandardMaterial({ color: 0xb4b4b4, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }),
+    normals: new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }),
+    wireframe: new THREE.MeshBasicMaterial({ color: 0x9c9c9c, wireframe: true }),
+  };
+}
+
+/** The material's textures and colour without lighting; other material kinds fall back to white. */
+function unlitOf(material: THREE.Material): THREE.MeshBasicMaterial {
+  const textured = material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial;
+  return new THREE.MeshBasicMaterial({
+    map: textured ? material.map : null,
+    color: textured ? material.color : 0xffffff,
+    vertexColors: material.vertexColors,
+    transparent: material.transparent,
+    opacity: material.opacity,
+    alphaTest: material.alphaTest,
+    side: material.side,
+  });
 }
 
 /**
@@ -42,6 +67,31 @@ export function mountScene(
   let grid: THREE.GridHelper | null = null;
   let frameId = 0;
   let disposed = false;
+  /** Each mesh's own material(s), restored by the `lit` mode. */
+  const originals = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+  const replacements = modeMaterials();
+  const unlit = new Map<THREE.Material, THREE.MeshBasicMaterial>();
+  let mode: RenderMode = 'lit';
+
+  function apply() {
+    for (const [mesh, own] of originals) {
+      if (mode === 'lit') {
+        mesh.material = own;
+      } else if (mode === 'unlit') {
+        const swap = (material: THREE.Material) => {
+          let flat = unlit.get(material);
+          if (!flat) {
+            flat = unlitOf(material);
+            unlit.set(material, flat);
+          }
+          return flat;
+        };
+        mesh.material = Array.isArray(own) ? own.map(swap) : swap(own);
+      } else {
+        mesh.material = replacements[mode];
+      }
+    }
+  }
 
   function frame() {
     if (!model) return;
@@ -76,6 +126,15 @@ export function mountScene(
       const centre = box.getCenter(new THREE.Vector3());
       model.position.set(-centre.x, -box.min.y, -centre.z);
       scene.add(model);
+      model.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const own: unknown = object.material;
+        if (own instanceof THREE.Material) originals.set(object, own);
+        else if (Array.isArray(own) && own.every((item): item is THREE.Material => item instanceof THREE.Material)) {
+          originals.set(object, own);
+        }
+      });
+      apply();
 
       const size = box.getSize(new THREE.Vector3());
       const span = Math.ceil(Math.max(size.x, size.z, 1) * 2);
@@ -107,30 +166,27 @@ export function mountScene(
 
   return {
     frame,
-    setWireframe(on) {
-      model?.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        for (const material of materialsOf(object)) {
-          if ('wireframe' in material) Reflect.set(material, 'wireframe', on);
-        }
-      });
+    setMode(next) {
+      mode = next;
+      apply();
     },
     dispose() {
       disposed = true;
       cancelAnimationFrame(frameId);
       observer.disconnect();
       controls.dispose();
-      scene.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const geometry: unknown = object.geometry;
+      for (const [mesh, own] of originals) {
+        const geometry: unknown = mesh.geometry;
         if (geometry instanceof THREE.BufferGeometry) geometry.dispose();
-        for (const material of materialsOf(object)) {
+        for (const material of Array.isArray(own) ? own : [own]) {
           for (const value of Object.values(material)) {
             if (value instanceof THREE.Texture) value.dispose();
           }
           material.dispose();
         }
-      });
+      }
+      // The unlit copies share the originals' textures, disposed above.
+      for (const material of [...unlit.values(), ...Object.values(replacements)]) material.dispose();
       grid?.dispose();
       renderer.dispose();
       renderer.domElement.remove();

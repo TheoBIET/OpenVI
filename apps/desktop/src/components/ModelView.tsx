@@ -1,9 +1,21 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { Box, FolderDown, Focus } from 'lucide-react';
+import { FolderDown, Focus } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
-import type { ModelStats, SceneHandle } from '../lib/scene';
+import type { ModelStats, RenderMode, SceneHandle } from '../lib/scene';
+
+const modes: { mode: RenderMode; label: string; hint: string }[] = [
+  { mode: 'lit', label: 'Lit', hint: 'Textures and lights: the model as it is meant to look' },
+  { mode: 'unlit', label: 'Unlit', hint: 'Textures without lighting: the raw colours' },
+  { mode: 'clay', label: 'Clay', hint: 'No textures, plain grey under the lights: the shape only' },
+  {
+    mode: 'normals',
+    label: 'Normals',
+    hint: 'Which way each surface faces, as colours: shows flipped or broken faces',
+  },
+  { mode: 'wireframe', label: 'Wire', hint: 'Triangle edges only: the mesh density' },
+];
 
 /** A GLB file on disk in an orbitable 3D view; `actions` go in the header bar. */
 export function ModelView({ path, title, actions }: { path: string; title: string; actions?: ReactNode }) {
@@ -11,14 +23,16 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
   const handle = useRef<SceneHandle | null>(null);
   const [stats, setStats] = useState<ModelStats | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [wireframe, setWireframe] = useState(false);
+  // Kept from one model to the next.
+  const [mode, setMode] = useState<RenderMode>('lit');
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [saved, setSaved] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
     setStats(null);
     setError(null);
-    setWireframe(false);
     setSaved(null);
     void import('../lib/scene').then(({ mountScene }) => {
       if (disposed || !host.current) return;
@@ -26,6 +40,7 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
       handle.current = mountScene(host.current, convertFileSrc(path), setStats, (failure) =>
         setError(`Cannot show this model: ${String(failure)}`),
       );
+      handle.current.setMode(modeRef.current);
     });
     return () => {
       disposed = true;
@@ -61,20 +76,30 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
             <FolderDown className="size-3.5" />
             Export
           </button>
-          <button
-            type="button"
-            aria-pressed={wireframe}
-            onClick={() => {
-              handle.current?.setWireframe(!wireframe);
-              setWireframe(!wireframe);
-            }}
-            className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
-              wireframe ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
-            }`}
+          <span
+            role="radiogroup"
+            aria-label="Render mode"
+            className="flex items-center rounded-sm border border-border"
           >
-            <Box className="size-3.5" />
-            Wireframe
-          </button>
+            {modes.map((item) => (
+              <button
+                key={item.mode}
+                type="button"
+                role="radio"
+                aria-checked={mode === item.mode}
+                title={item.hint}
+                onClick={() => {
+                  handle.current?.setMode(item.mode);
+                  setMode(item.mode);
+                }}
+                className={`h-6 px-1.5 first:rounded-l-sm last:rounded-r-sm ${
+                  mode === item.mode ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </span>
           <button
             type="button"
             onClick={() => handle.current?.frame()}
