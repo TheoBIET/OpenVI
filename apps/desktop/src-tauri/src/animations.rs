@@ -2,43 +2,27 @@
 //! `character_preview`.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use anyhow::Result;
-use openvi_formats::ScanPhase;
 use openvi_formats::animations::{ANIMATIONS, Clip, ClipDictionary, clip_dictionaries, clip_list};
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
-use crate::{index, scans};
+use crate::catalog::scan_all;
+use crate::index;
+use crate::progress::Reporter;
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ScanStep {
-    archive: &'static str,
-    phase: ScanPhase,
-    done: u64,
-    total: u64,
-}
-
-fn dictionaries(
-    root: &Path,
-    work: &Path,
-    database: &Path,
-    progress: Arc<dyn Fn(ScanPhase, u64, u64) + Send + Sync>,
-) -> Result<Vec<ClipDictionary>> {
-    let path = root.join(ANIMATIONS);
-    if path.is_file() {
-        // One scan per archive at a time, recorded in the index; clip_dictionaries then reads it from the cache.
-        let report = Arc::clone(&progress);
-        let scan = scans::scan_exclusive(&path, ANIMATIONS, &work.join("index"), move |phase, done, total| {
-            report(phase, done, total);
-        })?;
-        if let Err(error) = index::record(database, &path, ANIMATIONS, &scan) {
-            eprintln!("could not index {ANIMATIONS}: {error:#}");
-        }
-    }
-    clip_dictionaries(root, work, |_, _, _| {})
+fn dictionaries(root: &Path, work: &Path, database: &Path, reporter: &Reporter) -> Result<Vec<ClipDictionary>> {
+    scan_all(root, work, database, &[ANIMATIONS], reporter)?;
+    reporter.step("Listing the clip dictionaries…");
+    // The first listing reads every dictionary's name: counted, then cached.
+    clip_dictionaries(
+        root,
+        work,
+        |_, _, _| {},
+        |done, total| {
+            reporter.count("Reading the clip dictionaries' names", done, total);
+        },
+    )
 }
 
 async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T, String> {
@@ -48,23 +32,15 @@ async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 's
         .map_err(|error| format!("{error:#}"))
 }
 
-/// Every clip dictionary of the game folder `root`; scans `anim.rpf` first when needed (progress as
-/// [`crate::catalog::PROGRESS_EVENT`]).
+/// Every clip dictionary of the game folder `root`; scans `anim.rpf` first when needed (each step as
+/// `catalog-progress`).
 #[tauri::command]
 pub async fn animation_dictionaries(app: AppHandle, root: PathBuf) -> Result<Vec<ClipDictionary>, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
     let database = index::database(&app, &root)?;
-    let progress: Arc<dyn Fn(ScanPhase, u64, u64) + Send + Sync> = Arc::new(move |phase, done, total| {
-        let step = ScanStep {
-            archive: ANIMATIONS,
-            phase,
-            done,
-            total,
-        };
-        let _ = app.emit(crate::catalog::PROGRESS_EVENT, step);
-    });
-    blocking(move || dictionaries(&root, &work, &database, progress)).await
+    let reporter = Reporter::new(app);
+    blocking(move || dictionaries(&root, &work, &database, &reporter)).await
 }
 
 /// The clips of `dictionary` (its name or id).
@@ -87,7 +63,7 @@ mod tests {
             &root,
             &root.join("work"),
             &root.join("index.sqlite"),
-            Arc::new(|_, _, _| {}),
+            &Reporter::silent(),
         );
         std::fs::remove_dir_all(&root).unwrap();
 

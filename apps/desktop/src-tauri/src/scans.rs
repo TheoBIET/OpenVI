@@ -3,10 +3,12 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError, TryLockError};
 
 use anyhow::Result;
 use openvi_formats::{ArchiveScan, ScanPhase, scan_archive};
+
+use crate::progress::Reporter;
 
 fn lock_for(archive: &Path) -> Arc<Mutex<()>> {
     static LOCKS: OnceLock<Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>> = OnceLock::new();
@@ -27,6 +29,27 @@ pub(crate) fn scan_exclusive(
     let lock = lock_for(path);
     let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
     scan_archive(path, archive_id, cache_dir, progress)
+}
+
+/// [`scan_exclusive`] reporting to `reporter`: its steps, and that it waits when another scan of the archive (the
+/// Index button, another section) holds it.
+pub(crate) fn scan_reported(
+    path: &Path,
+    archive_id: &'static str,
+    cache_dir: &Path,
+    reporter: &Reporter,
+) -> Result<ArchiveScan> {
+    let lock = lock_for(path);
+    let _guard = match lock.try_lock() {
+        Ok(guard) => guard,
+        Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+        Err(TryLockError::WouldBlock) => {
+            reporter.step(format!("Waiting for the scan of {archive_id} started elsewhere…"));
+            lock.lock().unwrap_or_else(PoisonError::into_inner)
+        }
+    };
+    reporter.step(format!("Checking {archive_id}…"));
+    scan_archive(path, archive_id, cache_dir, reporter.scanning(archive_id))
 }
 
 #[cfg(test)]

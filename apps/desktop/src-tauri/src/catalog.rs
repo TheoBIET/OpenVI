@@ -1,71 +1,53 @@
 //! Data-mining catalogs of the game: vehicles for now.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use anyhow::{Result, ensure};
-use openvi_formats::ScanPhase;
 use openvi_formats::catalog::{VEHICLE_ARCHIVES, VehicleCatalog, vehicle_catalog};
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
+use crate::progress::Reporter;
 use crate::{index, scans};
 
-/// Event sent while the archives a catalog needs are scanned.
-pub const PROGRESS_EVENT: &str = "catalog-progress";
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CatalogProgress {
-    archive: &'static str,
-    phase: ScanPhase,
-    done: u64,
-    total: u64,
-}
-
-/// Scans the archives the vehicle catalog needs (one scan per archive at a time, recorded in the index), then builds it.
-fn vehicles(
+/// Scans the archives `ids` of `root` that are there (one scan per archive at a time, recorded in the index),
+/// reporting each step.
+pub(crate) fn scan_all(
     root: &Path,
     work: &Path,
     database: &Path,
-    progress: Arc<dyn Fn(&'static str, ScanPhase, u64, u64) + Send + Sync>,
-) -> Result<VehicleCatalog> {
-    for id in VEHICLE_ARCHIVES {
+    ids: &[&'static str],
+    reporter: &Reporter,
+) -> Result<()> {
+    for &id in ids {
         let path = root.join(id);
         if !path.is_file() {
             continue;
         }
-        let report = Arc::clone(&progress);
-        let scan = scans::scan_exclusive(&path, id, &work.join("index"), move |phase, done, total| {
-            report(id, phase, done, total);
-        })?;
+        let scan = scans::scan_reported(&path, id, &work.join("index"), reporter)?;
+        reporter.step(format!("Indexing {id}…"));
         if let Err(error) = index::record(database, &path, id, &scan) {
             eprintln!("could not index {id}: {error:#}");
         }
     }
+    Ok(())
+}
+
+/// Scans the archives the vehicle catalog needs, then builds it.
+fn vehicles(root: &Path, work: &Path, database: &Path, reporter: &Reporter) -> Result<VehicleCatalog> {
+    scan_all(root, work, database, &VEHICLE_ARCHIVES, reporter)?;
     // Every scan is cached now: this only decodes the tables.
+    reporter.step("Decoding the vehicle tables, game text and handling records…");
     vehicle_catalog(root, work, |_, _, _, _| {})
 }
 
-/// The vehicle catalog of the game folder `root`, reporting scans with [`PROGRESS_EVENT`].
+/// The vehicle catalog of the game folder `root`, reporting each step (`catalog-progress`).
 #[tauri::command]
 pub async fn vehicle_list(app: AppHandle, root: PathBuf) -> Result<VehicleCatalog, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
     let database = index::database(&app, &root)?;
-    let progress: Arc<dyn Fn(&'static str, ScanPhase, u64, u64) + Send + Sync> =
-        Arc::new(move |archive, phase, done, total| {
-            let _ = app.emit(
-                PROGRESS_EVENT,
-                CatalogProgress {
-                    archive,
-                    phase,
-                    done,
-                    total,
-                },
-            );
-        });
-    tauri::async_runtime::spawn_blocking(move || vehicles(&root, &work, &database, progress))
+    let reporter = Reporter::new(app);
+    tauri::async_runtime::spawn_blocking(move || vehicles(&root, &work, &database, &reporter))
         .await
         .map_err(|error| error.to_string())?
         .map_err(|error| format!("{error:#}"))
@@ -115,7 +97,7 @@ mod tests {
             &root,
             &root.join("work"),
             &root.join("index.sqlite"),
-            Arc::new(|_, _, _, _| {}),
+            &Reporter::silent(),
         );
         std::fs::remove_dir_all(&root).unwrap();
 

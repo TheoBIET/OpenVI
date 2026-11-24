@@ -1,59 +1,20 @@
 //! The Characters section: characters and animals, their parts, and one assembled in 3D.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use anyhow::Result;
-use openvi_formats::ScanPhase;
 use openvi_formats::characters::{
     CHARACTER_PARTS, Character, CharacterPart, character_glb, character_list, character_parts,
 };
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
-use crate::{index, scans};
+use crate::catalog::scan_all;
+use crate::index;
+use crate::progress::Reporter;
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ScanStep {
-    archive: &'static str,
-    phase: ScanPhase,
-    done: u64,
-    total: u64,
-}
-
-/// Scans the character parts (one scan per archive at a time) and records them in the index.
-fn scan_parts(root: &Path, work: &Path, database: &Path, progress: Arc<dyn Fn(ScanPhase, u64, u64) + Send + Sync>) {
-    let path = root.join(CHARACTER_PARTS);
-    if !path.is_file() {
-        return;
-    }
-    let report = Arc::clone(&progress);
-    match scans::scan_exclusive(
-        &path,
-        CHARACTER_PARTS,
-        &work.join("index"),
-        move |phase, done, total| {
-            report(phase, done, total);
-        },
-    ) {
-        Ok(scan) => {
-            if let Err(error) = index::record(database, &path, CHARACTER_PARTS, &scan) {
-                eprintln!("could not index {CHARACTER_PARTS}: {error:#}");
-            }
-        }
-        // character_list reports the failure.
-        Err(error) => eprintln!("could not scan {CHARACTER_PARTS}: {error:#}"),
-    }
-}
-
-fn list(
-    root: &Path,
-    work: &Path,
-    database: &Path,
-    progress: Arc<dyn Fn(ScanPhase, u64, u64) + Send + Sync>,
-) -> Result<Vec<Character>> {
-    scan_parts(root, work, database, progress);
+fn list(root: &Path, work: &Path, database: &Path, reporter: &Reporter) -> Result<Vec<Character>> {
+    scan_all(root, work, database, &[CHARACTER_PARTS], reporter)?;
+    reporter.step("Listing the characters and animals…");
     character_list(root, work, |_, _, _| {})
 }
 
@@ -64,23 +25,15 @@ async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 's
         .map_err(|error| format!("{error:#}"))
 }
 
-/// Every character and animal of the game folder `root`; scans `packs.rpf` first when needed (progress as
-/// [`crate::catalog::PROGRESS_EVENT`]).
+/// Every character and animal of the game folder `root`; scans `packs.rpf` first when needed (each step as
+/// `catalog-progress`).
 #[tauri::command]
 pub async fn characters(app: AppHandle, root: PathBuf) -> Result<Vec<Character>, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
     let database = index::database(&app, &root)?;
-    let progress: Arc<dyn Fn(ScanPhase, u64, u64) + Send + Sync> = Arc::new(move |phase, done, total| {
-        let step = ScanStep {
-            archive: CHARACTER_PARTS,
-            phase,
-            done,
-            total,
-        };
-        let _ = app.emit(crate::catalog::PROGRESS_EVENT, step);
-    });
-    blocking(move || list(&root, &work, &database, progress)).await
+    let reporter = Reporter::new(app);
+    blocking(move || list(&root, &work, &database, &reporter)).await
 }
 
 /// The parts character `name` can wear.
@@ -105,8 +58,13 @@ pub async fn character_preview(
 ) -> Result<PathBuf, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
+    let reporter = Reporter::new(app);
     blocking(move || {
         let chosen = dictionary.as_deref().zip(clip.as_deref());
+        reporter.step(match chosen {
+            Some((_, clip)) => format!("Assembling {name} with {clip}…"),
+            None => format!("Assembling {name}…"),
+        });
         character_glb(
             &root,
             &work,
@@ -131,7 +89,7 @@ mod tests {
             &root,
             &root.join("work"),
             &root.join("index.sqlite"),
-            Arc::new(|_, _, _| {}),
+            &Reporter::silent(),
         );
         std::fs::remove_dir_all(&root).unwrap();
 

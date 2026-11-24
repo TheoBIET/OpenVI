@@ -9,6 +9,7 @@ mod file;
 mod fs;
 mod index;
 mod model;
+mod progress;
 mod resource;
 mod scans;
 
