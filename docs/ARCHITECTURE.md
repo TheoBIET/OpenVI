@@ -91,8 +91,15 @@ All of them read the scan cache: a resource is reached by its archive and offset
 
 Selecting a resource opens the properties panel (`PropertiesPanel.tsx`): archive, offset, sizes, streams, sub type
 and tag; the textures a resource holds, listed with a PNG preview (`texture_preview` returns raw bytes through
-`tauri::ipc::Response`, shown through an object URL); the text of XML and text resources (first 512 KB). Details load
+`tauri::ipc::Response`, shown through an object URL). Details load
 150 ms after the selection settles, because loading a model inflates all of it.
+
+Double-clicking (or Enter on) a loose file, or an XML, text or PNG resource, opens the document view
+(`DocumentView.tsx`) in place of the list; Back, Up or Backspace close it. Loose files go through `file_preview`
+(images by extension; otherwise text when the first 8 KB hold no NUL and valid UTF-8; else binary) and
+`file_bytes`. Text shows in Monaco, read-only (`CodeView.tsx`): bundled locally, never from a CDN, and loaded with
+`import()` on the first document, so it costs nothing at start-up. Its theme uses the colour tokens; XML and JSON can
+be laid out (`lib/prettify.ts`), and the language is picked from the extension or the first characters.
 
 ## Index
 

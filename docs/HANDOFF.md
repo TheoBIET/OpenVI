@@ -25,11 +25,14 @@ State of the work and the next task, for whoever picks it up. Update it when you
   textures with a decoded PNG preview; XML and text resources show their text. Adapter: `resource_details`,
   `texture_png`, `resource_text`; app: `apps/desktop/src-tauri/src/resource.rs`. Tested on a synthetic texture
   dictionary (64×64 B8G8R8A8). **Not yet seen on real textures or by eye.**
+- **Done:** document view. Double-clicking a loose file (text sniffed, images) or an XML, text or PNG resource opens
+  it in place of the list: Monaco read-only with the OpenVI theme, Format (XML, JSON), Wrap; images fit or at actual
+  size. Text resources up to 8 MB. Seen by the maintainer before Monaco: XML and text read fine.
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 21 tests.
+  `cargo test` now runs 25 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
@@ -62,7 +65,8 @@ The maintainer tests with his own copy of the game files. Keep everything from t
 4. Click Index: the status bar follows each archive; afterwards, type a name part (`bench`, `door`) and press
    Enter. Check results, their Archive column, and that double-clicking one opens its archive on it.
    Select a Texture Dictionary: the panel lists its textures and previews them (BC1 and BC4 tiling is verified
-   upstream, BC2/3/5/6/7 probable, plain formats unverified). Select an XML document: its text shows.
+   upstream, BC2/3/5/6/7 probable, plain formats unverified). Double-click an XML document, a loose `.xml` or `.txt`, a
+   `.png`: each opens in the document view; try Format and Ctrl+F.
 5. Without the app: `cargo run --release -p openvi-formats --example list_archive -- <game folder>\common.rpf`
    prints counts by type, how many are named, and the coverage.
 
