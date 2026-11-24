@@ -19,7 +19,7 @@ pub const VEHICLE_MODELS: &str = "levels.rpf";
 
 /// The state of the file at `path` on disk, as a folder name: its size and modification time in hex. Exports go
 /// under it, so an archive that changes (a download finishing, a game update) gets fresh exports instead of stale ones.
-fn version(path: &Path) -> String {
+pub(crate) fn version(path: &Path) -> String {
     let Ok(metadata) = std::fs::metadata(path) else {
         return "missing".into();
     };
@@ -59,7 +59,7 @@ pub fn texture_stores(game_root: &Path) -> Vec<PathBuf> {
 
 /// The state of every texture store, as a short folder name: a model exported while a store was missing or still
 /// downloading names its textures as missing, so exports go under this and are redone when a store changes.
-fn stores_version(game_root: &Path) -> String {
+pub(crate) fn stores_version(game_root: &Path) -> String {
     let state: String = texture_stores(game_root).iter().map(|store| version(store)).collect();
     let hash = state.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
         (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
@@ -78,7 +78,7 @@ fn stale(output: &Path, inputs: &[PathBuf]) -> bool {
 }
 
 /// Export options: PNG textures (textures embedded in models included), nothing else.
-fn options(out: &Path, force: bool) -> Result<ExportOptions> {
+pub(crate) fn options(out: &Path, force: bool) -> Result<ExportOptions> {
     Ok(serde_json::from_value(json!({
         "out": out, "png": true, "dds": false, "raw": false, "force": force,
         "skip_embedded_textures": false, "body_shape": [],
