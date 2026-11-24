@@ -9,6 +9,7 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
+import { VehiclesView } from './components/VehiclesView';
 import {
   type Crumb,
   type Entry,
@@ -37,6 +38,9 @@ const searchCrumb = '#search';
 
 /** Path of the breadcrumb that stands for an open document. */
 const viewerCrumb = '#viewer';
+
+/** Path of the breadcrumb that stands for the vehicle catalog. */
+const vehiclesCrumb = '#vehicles';
 
 type History = { stack: string[]; index: number };
 
@@ -74,6 +78,8 @@ export function App() {
   const [indexing, setIndexing] = useState<IndexProgress | null>(null);
   /** A file or resource opened in place of the list. */
   const [viewer, setViewer] = useState<Entry | null>(null);
+  /** The vehicle catalog, shown in place of the list. */
+  const [vehiclesOpen, setVehiclesOpen] = useState(false);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
   /** The archive being opened, for the progress listener (which outlives renders). */
@@ -115,6 +121,7 @@ export function App() {
     setListing(next);
     setSearch(null);
     setViewer(null);
+    setVehiclesOpen(false);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -144,9 +151,10 @@ export function App() {
   }
 
   async function navigate(path: string, select: string | null = null) {
-    if (!root || path === searchCrumb || path === viewerCrumb) return;
+    if (!root || path === searchCrumb || path === viewerCrumb || path === vehiclesCrumb) return;
     if (path === listing?.path && !search) {
       setViewer(null);
+      setVehiclesOpen(false);
       if (select) setSelected(select);
       return;
     }
@@ -163,6 +171,10 @@ export function App() {
     // Back from an open document returns to the list it was opened from.
     if (viewer && step === -1) {
       setViewer(null);
+      return;
+    }
+    if (vehiclesOpen && step === -1) {
+      setVehiclesOpen(false);
       return;
     }
     // Back from search results returns to the listing they replaced.
@@ -209,6 +221,7 @@ export function App() {
       const view = await searchIndex(root, query);
       setSearch({ query, ...view });
       setViewer(null);
+      setVehiclesOpen(false);
       setSelected(null);
       setError(null);
       if (view.truncated) {
@@ -293,9 +306,11 @@ export function App() {
     search && rootCrumb
       ? [rootCrumb, { name: `Search “${search.query}”`, path: searchCrumb }]
       : (listing?.crumbs ?? []);
-  const crumbs = viewer ? [...listCrumbs, { name: viewer.name, path: viewerCrumb }] : listCrumbs;
+  let crumbs = viewer ? [...listCrumbs, { name: viewer.name, path: viewerCrumb }] : listCrumbs;
+  if (vehiclesOpen && rootCrumb) crumbs = [rootCrumb, { name: 'Vehicles', path: vehiclesCrumb }];
   const goUp = () => {
     if (viewer) setViewer(null);
+    else if (vehiclesOpen) setVehiclesOpen(false);
     else if (search) void travel(-1);
     else if (parent) void navigate(parent.path);
   };
@@ -314,9 +329,9 @@ export function App() {
       <Toolbar
         crumbs={crumbs}
         filter={filter}
-        canBack={viewer !== null || search !== null || history.index > 0}
+        canBack={vehiclesOpen || viewer !== null || search !== null || history.index > 0}
         canForward={history.index < history.stack.length - 1}
-        canUp={viewer !== null || parent !== undefined}
+        canUp={vehiclesOpen || viewer !== null || parent !== undefined}
         onBack={() => void travel(-1)}
         onForward={() => void travel(1)}
         onUp={goUp}
@@ -327,6 +342,11 @@ export function App() {
         indexLabel={indexLabel}
         indexing={indexing !== null}
         onIndex={() => void runIndex()}
+        vehiclesOpen={vehiclesOpen}
+        onVehicles={() => {
+          setViewer(null);
+          setVehiclesOpen(true);
+        }}
       />
       {root && listing && rootCrumb ? (
         <div className="flex min-h-0 flex-1">
@@ -346,10 +366,20 @@ export function App() {
             />
           )}
           {!opening && viewer && <DocumentView root={root} entry={viewer} />}
-          {!opening && !viewer && (
+          {!opening && !viewer && vehiclesOpen && (
+            <VehiclesView
+              root={root}
+              filter={filter}
+              onFind={(model) => {
+                setFilter(model);
+                void runSearch(model);
+              }}
+            />
+          )}
+          {!opening && !viewer && !vehiclesOpen && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}
-          {!opening && !viewer && selectedEntry?.kind === 'resource' && (
+          {!opening && !viewer && !vehiclesOpen && selectedEntry?.kind === 'resource' && (
             <PropertiesPanel root={root} entry={selectedEntry} />
           )}
         </div>
