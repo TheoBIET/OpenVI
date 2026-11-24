@@ -61,8 +61,8 @@ flowchart LR
 - The [Tauri 2 system prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS
 
 ```sh
-git clone https://github.com/TheoBIET/open-vi.git
-cd open-vi
+git clone https://github.com/TheoBIET/OpenVI.git
+cd OpenVI
 pnpm install
 pnpm dev          # runs the desktop app with hot reload
 ```

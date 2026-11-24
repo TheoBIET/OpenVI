@@ -7,7 +7,7 @@
   "author": "Théo BIET",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TheoBIET/open-vi.git"
+    "url": "git+https://github.com/TheoBIET/OpenVI.git"
   },
   "scripts": {
     "build": "turbo run build",
