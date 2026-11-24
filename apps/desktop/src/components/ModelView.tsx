@@ -1,20 +1,19 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { FolderDown, Focus } from 'lucide-react';
+import { Eye, FolderDown, Focus } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
 import type { ModelStats, RenderMode, SceneHandle } from '../lib/scene';
 
 const modes: { mode: RenderMode; label: string; hint: string }[] = [
-  { mode: 'lit', label: 'Lit', hint: 'Textures and lights: the model as it is meant to look' },
-  { mode: 'unlit', label: 'Unlit', hint: 'Textures without lighting: the raw colours' },
-  { mode: 'clay', label: 'Clay', hint: 'No textures, plain grey under the lights: the shape only' },
+  { mode: 'lit', label: 'Lit (textures and lights)', hint: 'Textures and lights: the model as it is meant to look' },
+  { mode: 'unlit', label: 'Unlit (textures only)', hint: 'Textures without lighting: the raw colours' },
+  { mode: 'clay', label: 'Clay (shape only)', hint: 'No textures, plain grey under the lights: the shape only' },
   {
     mode: 'normals',
-    label: 'Normals',
+    label: 'Normals (surface directions)',
     hint: 'Which way each surface faces, as colours: shows flipped or broken faces',
   },
-  { mode: 'wireframe', label: 'Wire', hint: 'Triangle edges only: the mesh density' },
+  { mode: 'wireframe', label: 'Wireframe (triangle edges)', hint: 'Triangle edges only: the mesh density' },
 ];
 
 /** A GLB file on disk in an orbitable 3D view; `actions` go in the header bar. */
@@ -36,8 +35,7 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
     setSaved(null);
     void import('../lib/scene').then(({ mountScene }) => {
       if (disposed || !host.current) return;
-      // The asset protocol serves the file, so the textures beside it resolve by their relative paths.
-      handle.current = mountScene(host.current, convertFileSrc(path), setStats, (failure) =>
+      handle.current = mountScene(host.current, path, setStats, (failure) =>
         setError(`Cannot show this model: ${String(failure)}`),
       );
       handle.current.setMode(modeRef.current);
@@ -59,6 +57,19 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
             {stats.size.map((side) => side.toFixed(2)).join(' × ')} m
           </span>
         )}
+        {stats && (
+          <span
+            className={stats.missingTextures.length > 0 ? 'text-warning' : ''}
+            title={
+              stats.missingTextures.length > 0
+                ? ['Missing (the materials show without them):', ...stats.missingTextures].join('\n')
+                : undefined
+            }
+          >
+            {stats.textures} textures
+            {stats.missingTextures.length > 0 && `, ${stats.missingTextures.length} missing`}
+          </span>
+        )}
         {saved && <span className="truncate">{saved}</span>}
         <span className="ml-auto flex items-center gap-1">
           {actions}
@@ -76,30 +87,25 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
             <FolderDown className="size-3.5" />
             Export
           </button>
-          <span
-            role="radiogroup"
-            aria-label="Render mode"
-            className="flex items-center rounded-sm border border-border"
-          >
-            {modes.map((item) => (
-              <button
-                key={item.mode}
-                type="button"
-                role="radio"
-                aria-checked={mode === item.mode}
-                title={item.hint}
-                onClick={() => {
-                  handle.current?.setMode(item.mode);
-                  setMode(item.mode);
-                }}
-                className={`h-6 px-1.5 first:rounded-l-sm last:rounded-r-sm ${
-                  mode === item.mode ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </span>
+          <label className="flex items-center gap-1" title={modes.find((item) => item.mode === mode)?.hint}>
+            <Eye className="size-3.5" />
+            <select
+              aria-label="Render mode"
+              value={mode}
+              onChange={(event) => {
+                const next = modes.find((item) => item.mode === event.target.value)?.mode ?? 'lit';
+                handle.current?.setMode(next);
+                setMode(next);
+              }}
+              className="h-6 rounded-sm border border-border bg-background px-1 text-foreground"
+            >
+              {modes.map((item) => (
+                <option key={item.mode} value={item.mode} title={item.hint}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => handle.current?.frame()}
