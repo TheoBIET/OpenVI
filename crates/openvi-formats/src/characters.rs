@@ -176,7 +176,7 @@ pub fn character_glb(
     let dictionary = match clip {
         Some((dictionary, _)) => {
             scan_animations(game_root, work_dir, |_, _, _| {})?;
-            Some(anim::load_dictionary(game_root, work_dir, dictionary)?.1)
+            Some(crate::animations::load_dictionary(game_root, work_dir, dictionary)?)
         }
         None => None,
     };
@@ -185,7 +185,7 @@ pub fn character_glb(
             let found = loaded
                 .clip(wanted)
                 .with_context(|| format!("no clip {wanted} in {}", loaded.name))?;
-            vec![(loaded, found)]
+            vec![(loaded.as_ref(), found)]
         }
         _ => Vec::new(),
     };

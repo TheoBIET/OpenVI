@@ -120,10 +120,34 @@ fn read_dictionary_names(
     Ok(entries)
 }
 
+/// Clip dictionary `dictionary` (its name or id), kept in memory: picking clip after clip of one dictionary reads it once.
+/// Only the last one is kept (they run to megabytes); it is read again when `anim.rpf` changes.
+pub(crate) fn load_dictionary(
+    game_root: &Path,
+    work_dir: &Path,
+    dictionary: &str,
+) -> Result<std::sync::Arc<anim::ClipDictionary>> {
+    use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+
+    type Last = Mutex<Option<(String, String, Arc<anim::ClipDictionary>)>>;
+    static LAST: OnceLock<Last> = OnceLock::new();
+    let last = LAST.get_or_init(Mutex::default);
+    let state = crate::model::version(&game_root.join(ANIMATIONS));
+    if let Some((name, seen, loaded)) = last.lock().unwrap_or_else(PoisonError::into_inner).as_ref()
+        && name == dictionary
+        && *seen == state
+    {
+        return Ok(Arc::clone(loaded));
+    }
+    let loaded = Arc::new(anim::load_dictionary(game_root, work_dir, dictionary)?.1);
+    *last.lock().unwrap_or_else(PoisonError::into_inner) = Some((dictionary.to_owned(), state, Arc::clone(&loaded)));
+    Ok(loaded)
+}
+
 /// The clips of dictionary `dictionary` (its name or its id).
 pub fn clip_list(game_root: &Path, work_dir: &Path, dictionary: &str) -> Result<Vec<Clip>> {
     scan_animations(game_root, work_dir, |_, _, _| {})?;
-    let (_, loaded) = anim::load_dictionary(game_root, work_dir, dictionary)?;
+    let loaded = load_dictionary(game_root, work_dir, dictionary)?;
     let mut clips: Vec<Clip> = loaded
         .clips
         .iter()
