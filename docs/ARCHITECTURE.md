@@ -76,9 +76,23 @@ exposes its own types, so a SixNG update stops there:
   checkpoints each segment in `cache_dir` and is read back from there until the archive changes. A second pass
   reads the name each RAGE resource carries in its own data (`<name>.#<tag>`; the tag gives the type: drawable,
   fragment, drawable or texture dictionary) and is cached with the scan.
-- Feature `fixtures`: a synthetic archive for the tests of other crates.
+- `resource_details(path, archive_id, cache_dir, offset)`: one scanned resource with its stream count and the
+  textures it holds (texture dictionaries, and models with embedded textures).
+- `texture_png(..., offset, index, max_size)`: one texture decoded (Xbox tiling removed, BCn and plain formats) and
+  encoded as PNG, at the largest mip that fits `max_size`.
+- `resource_text(..., offset, max_bytes)`: the start of an XML or plain-text resource.
+- Feature `fixtures`: a synthetic archive (DDS, PNG, XML, a named fragment, a texture dictionary holding one 64×64
+  texture) for the tests of other crates.
 
-Hash → name lookups (`sixng_core::names`) and resource decoding come with the index and the viewers.
+All of them read the scan cache: a resource is reached by its archive and offset. Hash → name lookups
+(`sixng_core::names`) and model export are not wired yet.
+
+## Viewers
+
+Selecting a resource opens the properties panel (`PropertiesPanel.tsx`): archive, offset, sizes, streams, sub type
+and tag; the textures a resource holds, listed with a PNG preview (`texture_preview` returns raw bytes through
+`tauri::ipc::Response`, shown through an object URL); the text of XML and text resources (first 512 KB). Details load
+150 ms after the selection settles, because loading a model inflates all of it.
 
 ## Index
 

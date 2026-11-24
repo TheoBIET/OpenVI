@@ -30,7 +30,7 @@ It runs on Windows, macOS and Linux.
 | ----------------------------------------------------------------------------- | ---------- |
 | Explorer: folder tree, grouped details list, path bar, filter, history        | ✅ done    |
 | Archive view: resources inside RPF9 archives, by type, with recovered names   | ✅ done    |
-| Viewers: 3D models (glTF export), textures (PNG / DDS export), text, audio    | 🗓️ planned |
+| Viewers: textures and text done; 3D models, audio, exports to come            | 🚧 started |
 | Search across the whole index: names (hashes and game text to come)           | ✅ names   |
 | Data-mining views: vehicles, weapons, missions, unreferenced (hidden) content | 🗓️ planned |
 | Map viewer in the spirit of CodeWalker                                        | 💭 later   |

@@ -21,11 +21,15 @@ State of the work and the next task, for whoever picks it up. Update it when you
   progress in the status bar. Enter in the filter box searches all indexed names; a result opens its archive with the
   resource selected; Back leaves the results. Backend in `apps/desktop/src-tauri/src/index.rs`. 15 Rust tests on
   synthetic bytes. **Not yet seen by eye.**
+- **Done:** properties panel. Selecting a resource shows its details; texture dictionaries and models list their
+  textures with a decoded PNG preview; XML and text resources show their text. Adapter: `resource_details`,
+  `texture_png`, `resource_text`; app: `apps/desktop/src-tauri/src/resource.rs`. Tested on a synthetic texture
+  dictionary (64×64 B8G8R8A8). **Not yet seen on real textures or by eye.**
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 15 tests.
+  `cargo test` now runs 21 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
@@ -57,6 +61,8 @@ The maintainer tests with his own copy of the game files. Keep everything from t
    and the filter stays responsive. The whole listing crosses the IPC as JSON in one piece; if that is slow, page it.
 4. Click Index: the status bar follows each archive; afterwards, type a name part (`bench`, `door`) and press
    Enter. Check results, their Archive column, and that double-clicking one opens its archive on it.
+   Select a Texture Dictionary: the panel lists its textures and previews them (BC1 and BC4 tiling is verified
+   upstream, BC2/3/5/6/7 probable, plain formats unverified). Select an XML document: its text shows.
 5. Without the app: `cargo run --release -p openvi-formats --example list_archive -- <game folder>\common.rpf`
    prints counts by type, how many are named, and the coverage.
 
@@ -80,10 +86,16 @@ carver cannot see, folders counted in the header, or the missing parts above.
 
 ## Then, in order
 
-1. **Viewers**: properties panel (`sixng_core::resource::Resource`); texture preview (PNG); model preview (glTF from
-   `sixng-core` into three.js); text tables.
-2. **Data-mining views** ([PRODUCT.md](PRODUCT.md)).
-3. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
+1. **Model preview**: SixNG builds GLBs only inside its exporter. Call `sixng_core::export::export_many` for one
+   entry into a folder of the app cache (models land in `models/<archive>/<name>_<off>/model.glb`), return the GLB
+   bytes through `tauri::ipc::Response`, and show it with three.js (`GLTFLoader`) in the properties panel. Needs a
+   real drawable to check by eye; synthetic meshes are out of reach.
+2. **Exports**: save a texture as PNG or DDS, a text resource as a file, a model as GLB (the dialog plugin is
+   already in).
+3. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
+   resources and texture hashes.
+4. **Data-mining views** ([PRODUCT.md](PRODUCT.md)).
+5. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
 
 ## Open questions for the maintainer
 
