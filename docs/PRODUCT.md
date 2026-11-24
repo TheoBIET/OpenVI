@@ -36,7 +36,19 @@ workbench**. The explorer is the product's backbone; every other feature is a vi
 
 - Layout like OpenIV: folder tree on the left, a details list grouped by type on the right, path bar and filter on
   top, status bar at the bottom.
-- GTA VI mood, used lightly: violet-tinted night greys; sunset accents (`flamingo` → `sunset` → `gold`) for the brand
-  line, the logo, group headers and the selection; `lagoon` teal as the cool accent. Tokens live in
-  `apps/desktop/src/styles.css`.
+- Tokens live in `apps/desktop/src/styles.css`; Monaco's theme (`src/lib/monaco.ts`) repeats them.
+- Type: Barlow (400–700) for all text, 14 px, line height 1.5; Barlow Condensed 700 for page titles and the logo
+  (`font-display`: uppercase, 0.01em tracking, 0.95 line height); Barlow 600 for section titles (`font-title`); Geist
+  Mono for code, identifiers, offsets and hashes (`font-mono`). Fonts are bundled (Fontsource), never fetched.
+- Accent: magenta `#ff4fa3` → violet `#a855f7` → cyan `#38d6ff` at 90deg. `bg-accent-gradient` for the brand line,
+  main buttons and progress; `text-accent-gradient` for the logo text. `primary` is the first colour (selection,
+  focus); `accent-solid` (`#dd5593`) for small accent text such as group headers; text on the gradient is `#1d0a12`.
+- Surfaces are neutral greys: background `#121212`, card `#171717`, popover `#1b1b1b`, secondary `#1e1e1e`, muted
+  `#252525`, border `#2d2d2d`, input `#383838`; muted text `#9c9c9c`, main text `#f0f0f0`; dark colour scheme.
+- Semantic colours: `destructive` `#f0735f` (errors), `warning` `#e2ad4b` (warnings and notices), `live` `#3fd6f2`
+  (presence only), `highlight` = the cyan.
+- Details: three accent halos at the top of the window (13 %, 9 %, 11 % at 10 %, 55 %, 95 % of the width); text
+  selection in the first accent at 45 %; keyboard focus a 2 px outline in it, 2 px off; radii 5 / 7.5 / 10 / 12.5 /
+  15 px (`sm` to `2xl`); thin scrollbars in `muted`; `data-reduce-motion="true"` turns animations off.
+- Explorer colours: folders violet, archives magenta, models cyan, other files muted.
 - No Rockstar logo, typeface, or "VI" lettering that imitates the game's logo.
