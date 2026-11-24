@@ -102,7 +102,7 @@ export function App() {
       void navigate(entry.path);
     } else if (entry.kind === 'archive') {
       setSelected(entry.path);
-      setNotice(`Browsing inside ${entry.name} comes with the archive index.`);
+      setNotice(`Opening archives is not available yet: ${entry.name} will open once the archive view ships.`);
     }
   }
 
