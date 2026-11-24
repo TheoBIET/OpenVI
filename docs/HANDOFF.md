@@ -39,6 +39,12 @@ State of the work and the next task, for whoever picks it up. Update it when you
 - **Done (0.5.0):** exports. The properties panel saves any resource inflated (Save raw) and the shown texture as a
   full-size PNG; the 3D view copies the model or vehicle export (GLB and textures) to a folder. Backend
   `apps/desktop/src-tauri/src/export.rs`; model copies only come from the work folder's exports.
+- **Done (0.6.x):** 3D render modes (Lit, Unlit, Clay, Normals, Wireframe); textures resolve beside the GLB; the
+  Materials panel shows each texture's status. Model textures come from the loose texture stores
+  (`data/ttdb/*.ttpf`), opened once per run: restart the app after they change.
+- **Done (0.7.0):** section tabs (Explorer, Vehicles, Characters; Weapons and Animations greyed out) and the 3D
+  animation bar. CI green on Windows, macOS, Ubuntu (run 45493449012).
+- **Done (0.8.0):** Characters section: list, 3D assembly with a Parts panel. **Never seen: needs `packs.rpf`.**
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
@@ -111,8 +117,10 @@ carver cannot see, folders counted in the header, or the missing parts above.
    vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
 2. **More exports**: DDS for textures, a whole texture dictionary at once, batch exports of a filtered list or of
    the vehicle catalog's models.
-3. **More catalogs**, like vehicles: weapons (`sixng_core::weapon`), peds and outfits, text tables
-   (`sixng_core::text`); then the other data-mining views of [PRODUCT.md](PRODUCT.md).
+3. **Animations section (0.9.0)**: clip dictionaries of `anim.rpf` (`sixng_core::anim::dictionaries`, cached), a clip
+   played on a character (`export_outfit` with clips) or on its bare skeleton (`anim_only`). **Weapons (0.10.0)**:
+   `sixng_core::weapon` and `matlib` (weapon models and finishes). Then text tables (`sixng_core::text`) and the other
+   data-mining views of [PRODUCT.md](PRODUCT.md).
 4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
 5. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.

@@ -2,6 +2,12 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.8.0 (2026-11-24)
+
+- Characters section: every character and animal SixNG can assemble from `packs.rpf` (filter by name, characters or
+  animals). Double-click shows one assembled in 3D, its face applied to the head; the Parts panel wears one part per
+  slot (head, hair, top, bottom, feet... or none) and applies the look on demand.
+
 ## 0.7.0 (2026-11-24)
 
 - Section tabs under the toolbar: Explorer and Vehicles, with Characters, Weapons and Animations to come. Catalogs

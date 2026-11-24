@@ -122,6 +122,12 @@ records them in the index (progress as `catalog-progress` events), then calls `o
 (`VehiclesView.tsx`) is a sortable table narrowed by the filter box, exported as CSV or JSON through the save dialog
 and `save_export` (writes `.csv` and `.json` only). The frontend keeps one catalog per game folder per session.
 
+Sections (`SectionTabs.tsx`) switch between the explorer and the catalogs; a catalog takes the whole width. The
+Characters section (`characters.rs` in the app, `openvi_formats::characters`) lists what `sixng_core::outfit` can
+assemble from `packs.rpf`, the parts of one by slot, and exports a look (a set of part offsets) with
+`outfit::export_outfit` into `<cache>/work/characters/<sources>/<name>_<look hash>/`, reused until `packs.rpf` or a
+texture store changes. The 3D view's animation bar plays any animations a GLB carries (`THREE.AnimationMixer`).
+
 ## Index
 
 `crates/openvi-index` keeps the scans in SQLite (bundled, WAL), one database per game folder in the app's local data

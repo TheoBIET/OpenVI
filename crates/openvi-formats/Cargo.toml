@@ -1,6 +1,6 @@
 [package]
 name = "openvi-formats"
-version = "0.7.0"
+version = "0.8.0"
 description = "OpenVI's formats adapter: the only caller of sixng-core"
 authors = ["Théo BIET"]
 license = "GPL-3.0-only"
