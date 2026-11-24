@@ -63,7 +63,7 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
     })?;
 
     let mut crumbs = vec![Crumb {
-        name: display_name(&root),
+        name: game_name(&root).map_or_else(|| display_name(&root), str::to_owned),
         path: root.clone(),
     }];
     let mut at = root.clone();
@@ -120,6 +120,17 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
     Ok(Listing { path, crumbs, entries })
 }
 
+/// Top-level archives every GTA VI install ships. Only names are checked: no file is opened.
+const GTA_VI_SIGNATURE: [&str; 3] = ["common.rpf", "levels.rpf", "packs.rpf"];
+
+/// The game installed in `root`, recognised by the archive names at its top level.
+fn game_name(root: &Path) -> Option<&'static str> {
+    GTA_VI_SIGNATURE
+        .iter()
+        .all(|name| root.join(name).is_file())
+        .then_some("GTA VI")
+}
+
 fn display_name(path: &Path) -> String {
     path.file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -167,6 +178,20 @@ mod tests {
 
         let crumbs: Vec<_> = result.unwrap().crumbs.into_iter().map(|crumb| crumb.name).collect();
         assert_eq!(crumbs[1..], ["pack", "story000"]);
+    }
+
+    #[test]
+    fn names_a_gta_vi_install_after_the_game() {
+        let root = game_folder("game");
+        let plain = listing(&root, &root).map(|listing| listing.crumbs[0].name.clone());
+        std::fs::write(root.join("levels.rpf"), [0u8; 1]).unwrap();
+        std::fs::write(root.join("packs.rpf"), [0u8; 1]).unwrap();
+        let result = listing(&root, &root.join("pack"));
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert!(plain.unwrap().starts_with("openvi-game-"));
+        let crumbs: Vec<_> = result.unwrap().crumbs.into_iter().map(|crumb| crumb.name).collect();
+        assert_eq!(crumbs, ["GTA VI", "pack"]);
     }
 
     #[test]

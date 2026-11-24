@@ -67,6 +67,7 @@ export function Toolbar(props: ToolbarProps) {
             <ChevronRight className="size-3.5 shrink-0 text-ink-700" />
             <button
               type="button"
+              title={crumb.path}
               onClick={() => props.onNavigate(crumb.path)}
               className={`truncate rounded px-1 hover:bg-ink-800 ${index === props.crumbs.length - 1 ? 'text-white' : 'text-ink-400'}`}
             >
