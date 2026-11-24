@@ -58,7 +58,8 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
     );
     // Characters to play clips on; without packs.rpf the clips still list.
     characterList(root).then(
-      (value) => current && setCharacters(value),
+      // Unnamed ped models (`ped_0x…`) would only lengthen the list.
+      (value) => current && setCharacters(value.filter((c) => !c.name.startsWith('ped_0x'))),
       () => undefined,
     );
     return () => {
@@ -216,7 +217,7 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
               {characters.length === 0 && <option value="">no characters (packs.rpf)</option>}
               {characters.map((item) => (
                 <option key={item.name} value={item.name}>
-                  {item.name}
+                  {item.display ? `${item.name} · ${item.display}` : item.name}
                 </option>
               ))}
             </select>

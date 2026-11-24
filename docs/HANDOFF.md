@@ -10,7 +10,7 @@ State of the work and the next task, for whoever picks it up. Update it when you
 - **Done:** a folder holding `common.rpf`, `levels.rpf` and `packs.rpf` is named "GTA VI" in the path bar, tree and
   status bar (file names only, nothing opened); hovering a crumb shows its real path.
 - **Done:** formats adapter `crates/openvi-formats` (header, scan, kinds, recovered names), pinned to SixNG
-  `13de593`, with `THIRD_PARTY_NOTICES.md`. `bcpack-rs` is `MIT OR Apache-2.0` at the pinned commit.
+  `e46a7f8` (2026-11-25), with `THIRD_PARTY_NOTICES.md`. `bcpack-rs` is `MIT OR Apache-2.0` at the pinned commit.
 - **Done:** archive view. Double-clicking an `.rpf` (list or tree) opens it like a folder: resources grouped by type
   (Drawable, Fragment, Texture Dictionary, DDS Texture, ...), columns Name, Type, Size, Offset; unnamed resources go
   by their offset, dimmed. First opening shows a scan panel with progress; the scan is cached in the app cache
@@ -56,6 +56,10 @@ State of the work and the next task, for whoever picks it up. Update it when you
   operations reported. Release builds (`pnpm tauri build`) are faster still than `pnpm dev`.
 - **Done (0.13.0):** a new clip plays on the character already assembled (clip exported alone, skeleton and
   animation); Skeleton only draws the bones.
+- **Done (0.14.0):** SixNG moved to `e46a7f8` (29 commits: animal clips, hair colours, brakes, black tyres, audio
+  and model names, cutscene and sector-grid decoders). Characters lists every ped model of the outfit list
+  (`pedlook::listed_models`, about 2,700; named ones first, the game's name beside the model name) and dresses any
+  of them in the outfits the game gives it (`pedlook::look`). **Never seen: needs `packs.rpf` and `data.rpf`.**
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
@@ -128,12 +132,14 @@ carver cannot see, folders counted in the header, or the missing parts above.
    vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
 2. **More exports**: DDS for textures, a whole texture dictionary at once, batch exports of a filtered list or of
    the vehicle catalog's models.
-3. **Weapons (0.14.0)**:
+3. **SixNG's new decoders**: a game text search (`sixng_core::text`, 4.2 M strings), then a Cutscenes section
+   (`sixng_core::cutscene`: every story scene's cast, props, cameras and clips, played on the cast).
+4. **Weapons**:
    `sixng_core::weapon` and `matlib` (weapon models and finishes). Then text tables (`sixng_core::text`) and the other
    data-mining views of [PRODUCT.md](PRODUCT.md).
-4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
+5. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
-5. **Publishing**: green CI and a first tagged release (release workflow). The GitHub Pages site (`apps/site`,
+6. **Publishing**: green CI and a first tagged release (release workflow). The GitHub Pages site (`apps/site`,
    deployed by `pages.yml`) is up; add screenshots once they exist (never from game files).
 
 ## Open questions for the maintainer

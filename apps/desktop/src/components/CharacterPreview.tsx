@@ -1,14 +1,23 @@
 import { RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { type Character, type CharacterPart, characterParts, characterPreview } from '../lib/characters';
+import {
+  type Character,
+  type CharacterPart,
+  type CharacterParts,
+  characterParts,
+  characterPreview,
+} from '../lib/characters';
 import { ModelView, ModelViewSkeleton } from './ModelView';
 
 type Loaded<T> = { state: 'loading' } | { state: 'ready'; value: T } | { state: 'failed'; error: string };
 
-/** One character assembled in 3D, with the parts it wears: one per group, or none, picked in the side panel. */
+/**
+ * One character assembled in 3D, with the parts it wears: one per group, or none, picked in the side panel, or the
+ * parts of one of the outfits the game dresses it in.
+ */
 export function CharacterPreview({ root, character }: { root: string; character: Character }) {
-  const [parts, setParts] = useState<Loaded<CharacterPart[]>>({ state: 'loading' });
+  const [parts, setParts] = useState<Loaded<CharacterParts>>({ state: 'loading' });
   /** Offset worn in each group; a group left out wears nothing. Null until the parts are known. */
   const [worn, setWorn] = useState<Record<string, number> | null>(null);
   const [glb, setGlb] = useState<Loaded<string>>({ state: 'loading' });
@@ -27,7 +36,7 @@ export function CharacterPreview({ root, character }: { root: string; character:
       (list) => {
         if (!current) return;
         setParts({ state: 'ready', value: list });
-        const defaults = list.filter((part) => part.default);
+        const defaults = list.parts.filter((part) => part.default);
         setWorn(Object.fromEntries(defaults.map((part) => [part.group, part.offset])));
         setApplied(defaults.map((part) => part.offset).sort((a, b) => a - b));
       },
@@ -61,7 +70,7 @@ export function CharacterPreview({ root, character }: { root: string; character:
 
   const groups = useMemo(() => {
     const byGroup = new Map<string, CharacterPart[]>();
-    for (const part of parts.state === 'ready' ? parts.value : []) {
+    for (const part of parts.state === 'ready' ? parts.value.parts : []) {
       byGroup.set(part.group, [...(byGroup.get(part.group) ?? []), part]);
     }
     return [...byGroup];
@@ -82,8 +91,26 @@ export function CharacterPreview({ root, character }: { root: string; character:
 
   function reset() {
     if (parts.state !== 'ready') return;
-    setWorn(Object.fromEntries(parts.value.filter((p) => p.default).map((p) => [p.group, p.offset])));
+    setWorn(Object.fromEntries(parts.value.parts.filter((p) => p.default).map((p) => [p.group, p.offset])));
   }
+
+  /** Wears outfit `index` alone, and shows it at once. */
+  function dress(index: number) {
+    if (parts.state !== 'ready') return;
+    const outfit = parts.value.outfits[index];
+    if (!outfit) return;
+    const groupOf = new Map(parts.value.parts.map((part) => [part.offset, part.group]));
+    const next: Record<string, number> = {};
+    for (const offset of outfit.parts) {
+      const group = groupOf.get(offset);
+      if (group !== undefined) next[group] = offset;
+    }
+    setWorn(next);
+    setApplied(Object.values(next).sort((a, b) => a - b));
+  }
+
+  const outfits = parts.state === 'ready' ? parts.value.outfits : [];
+  const title = character.display ? `${character.display} · ${character.name}` : character.name;
 
   return (
     <div className="flex min-w-0 flex-1">
@@ -91,12 +118,12 @@ export function CharacterPreview({ root, character }: { root: string; character:
       {shown ? (
         <ModelView
           path={shown}
-          title={character.name}
+          title={title}
           busy={glb.state === 'loading' ? `Assembling ${character.name}…` : null}
           banner={glb.state === 'failed' ? glb.error : null}
         />
       ) : (
-        <ModelViewSkeleton title={character.name} label={`Assembling ${character.name}…`} error={failure} />
+        <ModelViewSkeleton title={title} label={`Assembling ${character.name}…`} error={failure} />
       )}
       <aside aria-label="Parts" className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-card">
         <header className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs">
@@ -119,6 +146,26 @@ export function CharacterPreview({ root, character }: { root: string; character:
             Default
           </button>
         </header>
+        {outfits.length > 0 && (
+          <label className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+            Outfit
+            <select
+              aria-label="Outfit"
+              value=""
+              onChange={(event) => dress(Number(event.target.value))}
+              className="h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-foreground"
+            >
+              <option value="" disabled>
+                {outfits.length} from the game…
+              </option>
+              {outfits.map((outfit, index) => (
+                <option key={outfit.label + String(index)} value={index}>
+                  {outfit.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="flex-1 overflow-auto text-xs">
           {parts.state === 'loading' && <p className="px-3 py-2 text-muted-foreground">Reading…</p>}
           {groups.map(([group, options]) => (

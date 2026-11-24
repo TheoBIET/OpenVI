@@ -126,7 +126,9 @@ Sections (`SectionTabs.tsx`) switch between the explorer and the catalogs; a cat
 Characters section (`characters.rs` in the app, `openvi_formats::characters`) lists what `sixng_core::outfit` can
 assemble from `packs.rpf`, the parts of one by slot, and exports a look (a set of part offsets) with
 `outfit::export_outfit` into `<cache>/work/characters/<sources>/<name>_<look hash>/`, reused until `packs.rpf` or a
-texture store changes. The 3D view's animation bar plays any animations a GLB carries (`THREE.AnimationMixer`).
+texture store changes. Every ped model of the game's outfit list is listed too (`pedlook::listed_models`, named
+from `packs.rpf` and the text of `data.rpf`); a model without parts named after it wears the parts of the outfits
+`pedlook::look` gives it (`character_parts` returns the parts and the outfits). The 3D view's animation bar plays any animations a GLB carries (`THREE.AnimationMixer`).
 
 The Animations section (`animations.rs` in the app, `openvi_formats::animations`) lists the clip dictionaries of
 `anim.rpf` (`sixng_core::anim::dictionaries`, cached in `<work>/index/anim.clipdicts.json`, dropped when `anim.rpf`

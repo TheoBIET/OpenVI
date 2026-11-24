@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use openvi_formats::characters::{
-    CHARACTER_PARTS, Character, CharacterPart, character_glb, character_list, character_parts,
+    CHARACTER_PARTS, Character, CharacterParts, character_glb, character_list, character_parts,
 };
 use tauri::AppHandle;
 
@@ -13,8 +13,9 @@ use crate::index;
 use crate::progress::Reporter;
 
 fn list(root: &Path, work: &Path, database: &Path, reporter: &Reporter) -> Result<Vec<Character>> {
-    scan_all(root, work, database, &[CHARACTER_PARTS], reporter)?;
-    reporter.step("Listing the characters and animals…");
+    // data.rpf: the game text that gives ped models the name the game shows.
+    scan_all(root, work, database, &[CHARACTER_PARTS, "data.rpf"], reporter)?;
+    reporter.step("Listing the characters, animals and ped models (the first time names them, about half a minute)…");
     character_list(root, work, |_, _, _| {})
 }
 
@@ -25,7 +26,7 @@ async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 's
         .map_err(|error| format!("{error:#}"))
 }
 
-/// Every character and animal of the game folder `root`; scans `packs.rpf` first when needed (each step as
+/// Every character, animal and ped model of the game folder `root`; scans `packs.rpf` and `data.rpf` first when needed (each step as
 /// `catalog-progress`).
 #[tauri::command]
 pub async fn characters(app: AppHandle, root: PathBuf) -> Result<Vec<Character>, String> {
@@ -38,7 +39,7 @@ pub async fn characters(app: AppHandle, root: PathBuf) -> Result<Vec<Character>,
 
 /// The parts character `name` can wear.
 #[tauri::command]
-pub async fn character_part_list(app: AppHandle, root: PathBuf, name: String) -> Result<Vec<CharacterPart>, String> {
+pub async fn character_part_list(app: AppHandle, root: PathBuf, name: String) -> Result<CharacterParts, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
     blocking(move || character_parts(&root, &work, &name)).await

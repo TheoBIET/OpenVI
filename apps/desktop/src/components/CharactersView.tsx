@@ -10,11 +10,19 @@ type Loaded = { state: 'loading' } | { state: 'ready'; characters: Character[] }
 
 type Kind = 'all' | Character['kind'];
 
-const kinds: Kind[] = ['all', 'character', 'animal'];
+const kinds: Kind[] = ['all', 'character', 'animal', 'model'];
 
-const grid = { gridTemplateColumns: 'minmax(12rem,1fr) 7rem 5rem 7rem' };
+/** How the list names a kind. */
+export const kindLabel: Record<Character['kind'], string> = {
+  character: 'character',
+  animal: 'animal',
+  model: 'ped model',
+};
 
-/** Every character and animal; the filter box narrows the list, double-click opens one in 3D. */
+const grid = { gridTemplateColumns: 'minmax(12rem,1fr) minmax(8rem,16rem) 6rem 4rem 4rem' };
+
+/** Every character, animal and ped model; the filter box narrows the list (by model or game name), double-click
+ * opens one in 3D. */
 export function CharactersView({
   root,
   filter,
@@ -48,7 +56,9 @@ export function CharactersView({
     if (loaded.state !== 'ready') return [];
     const needle = filter.trim().toLowerCase();
     return loaded.characters.filter(
-      (character) => (kind === 'all' || character.kind === kind) && character.name.includes(needle),
+      (character) =>
+        (kind === 'all' || character.kind === kind) &&
+        (character.name.includes(needle) || (character.display?.toLowerCase().includes(needle) ?? false)),
     );
   }, [loaded, filter, kind]);
 
@@ -57,7 +67,7 @@ export function CharactersView({
       <LoadingPanel
         icon={Users}
         title="Finding the characters"
-        note="The first time scans packs.rpf, where their parts are."
+        note="The first time scans packs.rpf, where their parts are, and data.rpf, where their names are."
         step={progress}
       />
     );
@@ -78,7 +88,8 @@ export function CharactersView({
           <span className="font-title text-foreground">Characters</span>
           <span className="font-mono tabular-nums">
             {all.filter((c) => c.kind === 'character').length} characters ·{' '}
-            {all.filter((c) => c.kind === 'animal').length} animals
+            {all.filter((c) => c.kind === 'animal').length} animals · {all.filter((c) => c.kind === 'model').length} ped
+            models
           </span>
           <select
             aria-label="Kind"
@@ -89,6 +100,7 @@ export function CharactersView({
             <option value="all">All</option>
             <option value="character">Characters</option>
             <option value="animal">Animals</option>
+            <option value="model">Ped models</option>
           </select>
         </div>
         <div
@@ -96,9 +108,10 @@ export function CharactersView({
           style={grid}
         >
           <span>Name</span>
+          <span>Shown in game as</span>
           <span>Kind</span>
           <span className="text-right">Parts</span>
-          <span className="text-right">Worn by default</span>
+          <span className="text-right">Outfits</span>
         </div>
         <div
           tabIndex={0}
@@ -120,11 +133,22 @@ export function CharactersView({
               }`}
               style={grid}
             >
-              <span className="truncate font-mono text-xs">{character.name}</span>
-              <span className="text-muted-foreground">{character.kind}</span>
-              <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">{character.parts}</span>
+              <span className="truncate font-mono text-xs">
+                {character.name}
+                {character.uncertain && (
+                  <span className="text-warning" title="The name may be a chance hash match">
+                    {' '}
+                    ?
+                  </span>
+                )}
+              </span>
+              <span className="truncate">{character.display}</span>
+              <span className="text-muted-foreground">{kindLabel[character.kind]}</span>
               <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
-                {character.defaultParts}
+                {character.parts || ''}
+              </span>
+              <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
+                {character.outfits || ''}
               </span>
             </div>
           ))}
@@ -135,23 +159,26 @@ export function CharactersView({
   );
 }
 
-/** The selected character or animal: its default look turning in 3D. */
+/** The selected character, animal or ped model: its default look turning in 3D. */
 function CharacterPane({ root, character, onOpen }: { root: string; character: Character; onOpen: () => void }) {
   const glb = useSettled(character.name, () => characterPreview(root, character.name, null), 400);
   return (
-    <PreviewPane title={character.name} subtitle={character.kind} onOpen={onOpen}>
+    <PreviewPane title={character.display ?? character.name} subtitle={kindLabel[character.kind]} onOpen={onOpen}>
       <PreviewSection>
         <ModelPreview loaded={glb} waiting="Assembling its default look…" />
       </PreviewSection>
       <PreviewSection>
         <Properties
           rows={[
-            ['Kind', character.kind],
-            ['Parts', character.parts],
-            ['Worn by default', character.defaultParts],
+            ['Name', character.name],
+            ['Shown in game as', character.display ?? '—'],
+            ['Kind', kindLabel[character.kind]],
+            ['Parts', character.parts || '—'],
+            ['Worn by default', character.defaultParts || '—'],
+            ['Outfits', character.outfits || '—'],
           ]}
         />
-        <p className="mt-2 text-muted-foreground">Open it to change its parts.</p>
+        <p className="mt-2 text-muted-foreground">Open it to change its outfit or parts.</p>
       </PreviewSection>
     </PreviewPane>
   );
