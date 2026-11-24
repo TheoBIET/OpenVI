@@ -20,7 +20,7 @@ State of the work and the next task, for whoever picks it up. Update it when you
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 13 tests.
+  `cargo test` now runs 10 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
