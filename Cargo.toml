@@ -1,3 +1,16 @@
 [workspace]
 members = ["apps/desktop/src-tauri", "crates/openvi-formats"]
 resolver = "3"
+
+# Archive scans inflate gigabytes: keep the decoders fast in `pnpm dev` too.
+[profile.dev.package.sixng-core]
+opt-level = 3
+
+[profile.dev.package.flate2]
+opt-level = 3
+
+[profile.dev.package.zlib-rs]
+opt-level = 3
+
+[profile.dev.package.miniz_oxide]
+opt-level = 3
