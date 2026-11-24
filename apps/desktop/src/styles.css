@@ -129,3 +129,30 @@ body {
 .checkerboard {
   background: repeating-conic-gradient(var(--color-secondary) 0 25%, var(--color-background) 0 50%) 0 0 / 16px 16px;
 }
+
+/* Loading placeholders: a muted block with a light band sweeping across it. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-muted);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-foreground) 6%, transparent),
+    transparent
+  );
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}

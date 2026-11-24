@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { type CatalogProgress, onCatalogProgress, type Vehicle } from '../lib/catalog';
 import { formatSize } from '../lib/format';
 import { vehiclePreview } from '../lib/model';
-import { ModelView } from './ModelView';
+import { ModelView, ModelViewSkeleton } from './ModelView';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; path: string } | { state: 'failed'; error: string };
 
@@ -21,8 +21,16 @@ export function VehiclePreview({
   const [config, setConfig] = useState(0);
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [progress, setProgress] = useState<CatalogProgress | null>(null);
+  /** The last configuration exported: it stays on screen while the next one is. */
+  const [shown, setShown] = useState<string | null>(null);
   const name = vehicle.model ?? vehicle.modelHash;
   const title = vehicle.displayName ? `${vehicle.displayName} (${name})` : name;
+
+  // Another vehicle starts over: its first configuration, and no other car blurred behind it.
+  useEffect(() => {
+    setConfig(0);
+    setShown(null);
+  }, [vehicle.modelHash]);
 
   useEffect(() => {
     if (!vehicle.model) {
@@ -34,7 +42,11 @@ export function VehiclePreview({
     setLoaded({ state: 'loading' });
     setProgress(null);
     vehiclePreview(root, vehicle.model, config).then(
-      (path) => current && setLoaded({ state: 'ready', path }),
+      (path) => {
+        if (!current) return;
+        setLoaded({ state: 'ready', path });
+        setShown(path);
+      },
       (error: unknown) => current && setLoaded({ state: 'failed', error: String(error) }),
     );
     return () => {
@@ -74,30 +86,33 @@ export function VehiclePreview({
     </>
   );
 
-  if (loaded.state === 'ready') return <ModelView path={loaded.path} title={title} actions={actions} />;
+  let waiting = `Exporting ${name} with its wheels…`;
+  if (progress) {
+    const step =
+      progress.phase === 'carving'
+        ? `finding resources ${formatSize(progress.done)} of ${formatSize(progress.total)}`
+        : `reading names ${progress.done} of ${progress.total}`;
+    waiting = `Scanning ${progress.archive} · ${step}`;
+  }
+
+  // The configuration on screen stays (blurred) while the next one is exported.
+  if (shown) {
+    return (
+      <ModelView
+        path={shown}
+        title={title}
+        actions={actions}
+        busy={loaded.state === 'loading' ? waiting : null}
+        banner={loaded.state === 'failed' ? loaded.error : null}
+      />
+    );
+  }
   return (
-    <main className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
-        <span className="truncate text-foreground">{title}</span>
-        <span className="ml-auto flex items-center gap-1">{actions}</span>
-      </div>
-      {loaded.state === 'loading' ? (
-        <div className="grid flex-1 place-items-center text-center text-xs text-muted-foreground">
-          <div>
-            <p>Exporting {name} with its wheels…</p>
-            {progress && (
-              <p className="mt-1 font-mono tabular-nums">
-                {progress.archive} ·{' '}
-                {progress.phase === 'carving'
-                  ? `finding resources ${formatSize(progress.done)} of ${formatSize(progress.total)}`
-                  : `reading names ${progress.done} of ${progress.total}`}
-              </p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p className="grid flex-1 place-items-center px-10 text-center text-xs text-destructive">{loaded.error}</p>
-      )}
-    </main>
+    <ModelViewSkeleton
+      title={title}
+      label={waiting}
+      actions={actions}
+      error={loaded.state === 'failed' ? loaded.error : null}
+    />
   );
 }

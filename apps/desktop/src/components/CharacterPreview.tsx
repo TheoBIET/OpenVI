@@ -2,7 +2,7 @@ import { RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { type Character, type CharacterPart, characterParts, characterPreview } from '../lib/characters';
-import { ModelView } from './ModelView';
+import { ModelView, ModelViewSkeleton } from './ModelView';
 
 type Loaded<T> = { state: 'loading' } | { state: 'ready'; value: T } | { state: 'failed'; error: string };
 
@@ -12,6 +12,8 @@ export function CharacterPreview({ root, character }: { root: string; character:
   /** Offset worn in each group; a group left out wears nothing. Null until the parts are known. */
   const [worn, setWorn] = useState<Record<string, number> | null>(null);
   const [glb, setGlb] = useState<Loaded<string>>({ state: 'loading' });
+  /** The last look assembled: it stays on screen while the next one is. */
+  const [shown, setShown] = useState<string | null>(null);
   /** The look on show: assembling takes seconds, so the panel's choices apply on demand. */
   const [applied, setApplied] = useState<number[] | null>(null);
 
@@ -20,6 +22,7 @@ export function CharacterPreview({ root, character }: { root: string; character:
     setParts({ state: 'loading' });
     setWorn(null);
     setApplied(null);
+    setShown(null);
     characterParts(root, character.name).then(
       (list) => {
         if (!current) return;
@@ -44,7 +47,11 @@ export function CharacterPreview({ root, character }: { root: string; character:
     let current = true;
     setGlb({ state: 'loading' });
     characterPreview(root, character.name, applied).then(
-      (path) => current && setGlb({ state: 'ready', value: path }),
+      (path) => {
+        if (!current) return;
+        setGlb({ state: 'ready', value: path });
+        setShown(path);
+      },
       (error: unknown) => current && setGlb({ state: 'failed', error: String(error) }),
     );
     return () => {
@@ -59,6 +66,10 @@ export function CharacterPreview({ root, character }: { root: string; character:
     }
     return [...byGroup];
   }, [parts]);
+
+  let failure: string | null = null;
+  if (parts.state === 'failed') failure = parts.error;
+  else if (glb.state === 'failed') failure = glb.error;
 
   function wear(group: string, offset: number | null) {
     setWorn((previous) => {
@@ -76,18 +87,16 @@ export function CharacterPreview({ root, character }: { root: string; character:
 
   return (
     <div className="flex min-w-0 flex-1">
-      {glb.state === 'ready' ? (
-        <ModelView path={glb.value} title={character.name} />
+      {/* The look on screen stays (blurred) while the next one is assembled. */}
+      {shown ? (
+        <ModelView
+          path={shown}
+          title={character.name}
+          busy={glb.state === 'loading' ? `Assembling ${character.name}…` : null}
+          banner={glb.state === 'failed' ? glb.error : null}
+        />
       ) : (
-        <p
-          className={`grid min-w-0 flex-1 place-items-center px-10 text-center text-xs ${
-            glb.state === 'failed' || parts.state === 'failed' ? 'text-destructive' : 'text-muted-foreground'
-          }`}
-        >
-          {parts.state === 'failed' && parts.error}
-          {parts.state !== 'failed' && glb.state === 'failed' && glb.error}
-          {parts.state !== 'failed' && glb.state === 'loading' && `Assembling ${character.name}…`}
-        </p>
+        <ModelViewSkeleton title={character.name} label={`Assembling ${character.name}…`} error={failure} />
       )}
       <aside aria-label="Parts" className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-card">
         <header className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs">

@@ -5,7 +5,7 @@ import { type Clip, type ClipDictionary, animationClips, animationDictionaries }
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
 import { type Character, characterList, characterPreview } from '../lib/characters';
 import { formatSize } from '../lib/format';
-import { ModelView } from './ModelView';
+import { ModelView, ModelViewSkeleton } from './ModelView';
 
 type Loaded<T> =
   | { state: 'idle' }
@@ -44,6 +44,8 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
   const [character, setCharacter] = useState<string | null>(null);
   const [skeletonOnly, setSkeletonOnly] = useState(false);
   const [glb, setGlb] = useState<Loaded<string>>({ state: 'idle' });
+  /** The last clip assembled: it stays on screen while the next one is. */
+  const [shown, setShown] = useState<string | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -87,7 +89,11 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
     let current = true;
     setGlb({ state: 'loading' });
     characterPreview(root, character, null, { dictionary, clip, skeletonOnly }).then(
-      (value) => current && setGlb({ state: 'ready', value }),
+      (value) => {
+        if (!current) return;
+        setGlb({ state: 'ready', value });
+        setShown(value);
+      },
       (error: unknown) => current && setGlb({ state: 'failed', error: String(error) }),
     );
     return () => {
@@ -132,6 +138,7 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
   }
 
   const clipList = clips.state === 'ready' ? clips.value : [];
+  const assembling = `Assembling ${character ?? ''} with ${clip ?? ''}…`;
   return (
     <div className="flex min-w-0 flex-1">
       <aside
@@ -212,16 +219,26 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
             Skeleton only
           </label>
         </div>
-        {glb.state === 'ready' ? (
-          <ModelView path={glb.value} title={`${dictionary ?? ''}/${clip ?? ''}`} />
-        ) : (
-          <p
-            className={`grid flex-1 place-items-center px-10 text-center text-xs ${glb.state === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
-          >
-            {glb.state === 'idle' && 'Pick a dictionary and a clip to play it on a character.'}
-            {glb.state === 'loading' && `Assembling ${character ?? ''} with ${clip ?? ''}…`}
-            {glb.state === 'failed' && glb.error}
+        {/* The clip on screen keeps playing (blurred) while the next one is assembled. */}
+        {shown && (
+          <ModelView
+            path={shown}
+            title={`${dictionary ?? ''}/${clip ?? ''}`}
+            busy={glb.state === 'loading' ? assembling : null}
+            banner={glb.state === 'failed' ? glb.error : null}
+          />
+        )}
+        {!shown && glb.state === 'idle' && (
+          <p className="grid flex-1 place-items-center px-10 text-center text-xs text-muted-foreground">
+            Pick a dictionary and a clip to play it on a character.
           </p>
+        )}
+        {!shown && glb.state !== 'idle' && (
+          <ModelViewSkeleton
+            title={`${dictionary ?? ''}/${clip ?? ''}`}
+            label={assembling}
+            error={glb.state === 'failed' ? glb.error : null}
+          />
         )}
       </div>
     </div>
