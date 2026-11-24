@@ -69,6 +69,10 @@ The maintainer tests with his own copy of the game files. Keep everything from t
    `.png`: each opens in the document view; try Format and Ctrl+F.
 5. Without the app: `cargo run --release -p openvi-formats --example list_archive -- <game folder>\common.rpf`
    prints counts by type, how many are named, and the coverage.
+6. Vehicles: `cargo run --release -p openvi-formats --example vehicles -- <game folder> <out folder>` writes
+   `vehicles.csv` and `vehicles.json` (model, hash, display name, make, handling, colour, rim, tyre, mass, top speed,
+   gears). Needs `packs.rpf` complete, and `data.rpf` for display names and handling. Run `list_archive` on
+   `levels.rpf` first for more model names.
 
 Record the results here, fix what breaks, commit.
 
