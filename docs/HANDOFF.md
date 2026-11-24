@@ -65,8 +65,16 @@ State of the work and the next task, for whoever picks it up. Update it when you
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
   `cargo test` now runs 38 tests.
-- **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
-  <https://github.com/TheoBIET/OpenVI>.
+- **Done (0.15.0):** auto-update. The status bar checks GitHub for a newer release on start and every six hours,
+  and installs it on a click (`tauri-plugin-updater`, `components/UpdateButton.tsx`). Releases are published (not
+  drafts) by `release.yml` with notes from the CHANGELOG, signed update bundles and `latest.json`. The signing key
+  is the repository secret `TAURI_SIGNING_PRIVATE_KEY` (no password); the maintainer keeps the only other copy
+  (`~/.tauri/openvi-updater.key`). Losing it means installed copies can no longer update: never rotate it without
+  shipping a release signed with the old key that carries the new public key.
+- **Releasing:** `pnpm bump x.y.z`, CHANGELOG entry, commit, `git tag -a vx.y.z`, push `main`, then push the tag
+  alone (`git push origin vx.y.z`) once the maintainer agrees: that builds and publishes the release. Pushing more
+  than three tags at once starts no workflow.
+- **Never run yet:** Linux and macOS installers from the release workflow, code signing.
 
 ## Run on Windows
 

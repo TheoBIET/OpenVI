@@ -20,7 +20,11 @@ tauri-build = { version = "2.7.6", features = [] }
 tauri = { version = "2.12.7", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
+# Plugin configuration in the generated context.
+serde_json = "1"
 # Canonical paths without the `\\?\` prefix on Windows.
 dunce = "1"
 anyhow = "1"

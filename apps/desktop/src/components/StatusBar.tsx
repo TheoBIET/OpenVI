@@ -1,5 +1,6 @@
 import { formatSize } from '../lib/format';
 import type { Entry } from '../lib/fs';
+import { UpdateButton } from './UpdateButton';
 
 type StatusBarProps = {
   shown: number;
@@ -24,7 +25,7 @@ export function StatusBar({ shown, selected, notice, index, folderName }: Status
       <span className="ml-auto flex min-w-0 items-center gap-3">
         {index && <span className="truncate">{index}</span>}
         {folderName && <span>{folderName}</span>}
-        <span className="font-mono">OpenVI {import.meta.env.VITE_APP_VERSION}</span>
+        <UpdateButton />
       </span>
     </footer>
   );

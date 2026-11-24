@@ -1,5 +1,8 @@
 name: Release
 
+# A `v*` tag publishes a release: installers for every platform, signed for the updater, and `latest.json`, which
+# installed copies of OpenVI read to find a newer version
+# (https://github.com/TheoBIET/OpenVI/releases/latest/download/latest.json).
 on:
   push:
     tags: ['v*']
@@ -8,8 +11,32 @@ permissions:
   contents: write
 
 jobs:
+  release:
+    name: Create the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## ${version} " 'index($0, heading) == 1 { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md > notes.md
+          {
+            echo
+            echo 'Windows: run the `-setup.exe` (SmartScreen asks to confirm: builds are not code-signed yet). macOS: the'
+            echo '`.dmg` (right-click, Open, the first time). Linux: the `.AppImage`, `.deb` or `.rpm`. Installed copies'
+            echo 'update themselves: the status bar offers each new version.'
+          } >> notes.md
+          cat notes.md
+      - name: Create it, or keep the one there
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "OpenVI $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
   build:
     name: Build (${{ matrix.name }})
+    needs: release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,10 +66,15 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the update bundles; the public key is in tauri.conf.json (plugins.updater.pubkey).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: OpenVI ${{ github.ref_name }}
-          releaseBody: See the assets below. Builds are not code-signed yet.
-          releaseDraft: true
+          releaseDraft: false
+          includeUpdaterJson: true
+          # Windows updates install the NSIS setup (.exe), not the MSI.
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}

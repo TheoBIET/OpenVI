@@ -136,6 +136,15 @@ is newer) and their clips; a clip plays through `character_glb` with a clip, whi
 (bone tracks on the joints of the same name; `anim_only` for the skeleton alone). The look folder's name includes
 the clip, and its sources `anim.rpf`'s state.
 
+## Releases and updates
+
+`release.yml` runs on a `v*` tag: one job creates the release with that version's CHANGELOG section, then one job
+per platform builds the installers with `tauri-action` and uploads them with their update bundles, signed with the
+updater key, and `latest.json` (merged across platforms; Windows points at the NSIS setup). Installed copies read
+`releases/latest/download/latest.json` (`plugins.updater` in `tauri.conf.json`, which holds the public key),
+check the signature, install (passive NSIS on Windows) and restart through `tauri-plugin-process`. Development
+builds never check.
+
 ## Index
 
 `crates/openvi-index` keeps the scans in SQLite (bundled, WAL), one database per game folder in the app's local data

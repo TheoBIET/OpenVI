@@ -13,8 +13,9 @@
 </div>
 
 > [!WARNING]
-> OpenVI is in early development: there is no release to download yet. It reads files you own and never decrypts,
-> uploads or modifies them. Read [the legal notes](docs/LEGAL.md) before contributing.
+> OpenVI is in early development. Installers are on the [releases page](https://github.com/TheoBIET/OpenVI/releases)
+> (not code-signed yet); installed copies update themselves. It reads files you own and never decrypts, uploads or
+> modifies them. Read [the legal notes](docs/LEGAL.md) before contributing.
 
 ## What it is
 
