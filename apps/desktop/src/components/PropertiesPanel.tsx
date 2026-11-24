@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { saveResource, saveTexture } from '../lib/export';
 import { formatOffset, formatSize } from '../lib/format';
 import type { Entry } from '../lib/fs';
 import { archiveOf } from '../lib/index';
@@ -13,11 +14,21 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
   const [details, setDetails] = useState<Loaded<ResourceDetails>>({ state: 'loading' });
   const [texture, setTexture] = useState(0);
   const [preview, setPreview] = useState<Loaded<string>>({ state: 'loading' });
+  /** Where the last export went, or why it failed. */
+  const [saved, setSaved] = useState<string | null>(null);
+
+  function run(save: () => Promise<string | null>) {
+    save().then(
+      (dest) => dest && setSaved(`Saved to ${dest}`),
+      (error: unknown) => setSaved(String(error)),
+    );
+  }
 
   useEffect(() => {
     let current = true;
     setDetails({ state: 'loading' });
     setTexture(0);
+    setSaved(null);
     // Loading inflates the whole resource (models run to tens of MB): wait until the selection settles, so
     // walking the list with the arrow keys does not load every row on the way.
     const timer = setTimeout(() => {
@@ -88,6 +99,27 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
             Double-click or press Enter to open it.
           </p>
         )}
+        <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs">
+          <PanelButton
+            label="Save raw…"
+            onClick={() =>
+              run(() =>
+                saveResource(
+                  root,
+                  entry.path,
+                  details.state === 'ready' ? `${entry.name}.${details.value.extension}` : entry.name,
+                ),
+              )
+            }
+          />
+          {shown && (
+            <PanelButton
+              label="Save PNG…"
+              onClick={() => run(() => saveTexture(root, entry.path, shown.index, shown.name))}
+            />
+          )}
+        </div>
+        {saved && <p className="px-3 pb-2 text-xs break-all text-muted-foreground">{saved}</p>}
         {hasTextures && (
           <section aria-label="Textures" className="border-t border-border px-3 py-2">
             <h3 className="mb-2 font-title text-xs text-accent-solid">
@@ -140,5 +172,17 @@ function Property({ label, value, mono = false }: { label: string; value: string
         {value}
       </dd>
     </>
+  );
+}
+
+function PanelButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-6 items-center rounded-sm border border-border px-2 text-foreground hover:bg-muted"
+    >
+      {label}
+    </button>
   );
 }

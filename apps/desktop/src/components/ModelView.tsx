@@ -1,7 +1,8 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { Box, Focus } from 'lucide-react';
+import { Box, FolderDown, Focus } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
+import { saveModel } from '../lib/export';
 import type { ModelStats, SceneHandle } from '../lib/scene';
 
 /** A GLB file on disk in an orbitable 3D view; `actions` go in the header bar. */
@@ -11,12 +12,14 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
   const [stats, setStats] = useState<ModelStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [wireframe, setWireframe] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
     setStats(null);
     setError(null);
     setWireframe(false);
+    setSaved(null);
     void import('../lib/scene').then(({ mountScene }) => {
       if (disposed || !host.current) return;
       // The asset protocol serves the file, so the textures beside it resolve by their relative paths.
@@ -41,8 +44,23 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
             {stats.size.map((side) => side.toFixed(2)).join(' × ')} m
           </span>
         )}
+        {saved && <span className="truncate">{saved}</span>}
         <span className="ml-auto flex items-center gap-1">
           {actions}
+          <button
+            type="button"
+            title="Copy the GLB and its textures to a folder"
+            onClick={() =>
+              saveModel(path).then(
+                (dest) => dest && setSaved(`Exported to ${dest}`),
+                (error: unknown) => setSaved(String(error)),
+              )
+            }
+            className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+          >
+            <FolderDown className="size-3.5" />
+            Export
+          </button>
           <button
             type="button"
             aria-pressed={wireframe}
