@@ -81,6 +81,10 @@ exposes its own types, so a SixNG update stops there:
 - `texture_png(..., offset, index, max_size)`: one texture decoded (Xbox tiling removed, BCn and plain formats) and
   encoded as PNG, at the largest mip that fits `max_size`.
 - `resource_text(..., offset, max_bytes)`: the start of an XML or plain-text resource.
+- `catalog::vehicle_catalog(game_root, work_dir, progress)`: scans `packs.rpf` and `data.rpf` if needed, then lets
+  SixNG decode the vehicle tables (`vehicles::build`) and the handling records (`pso::export_handling`) into
+  `<work>/catalog`, and joins them into one row per model (`vehicle_rows`, tested on hand-written JSON).
+  The work folder is SixNG's layout: scans in `<work>/index`, which is the app's scan cache.
 - Feature `fixtures`: a synthetic archive (DDS, PNG, XML, a named fragment, a texture dictionary holding one 64×64
   texture) for the tests of other crates.
 
