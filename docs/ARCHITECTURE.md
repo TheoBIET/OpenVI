@@ -111,7 +111,7 @@ be laid out (`lib/prettify.ts`), and the language is picked from the extension o
 
 Models (drawables, fragments, drawable dictionaries) open in the 3D view (`ModelView.tsx`, `lib/scene.ts`):
 three.js, loaded with `import()` like Monaco, orbit controls, the model standing on a grid at the origin (glTF is
-Y-up, in metres), wireframe and reframe. `model_preview` and `vehicle_preview` return the path of the GLB SixNG
+Y-up, in metres), reframe, and five render modes (Lit, Unlit, Clay, Normals, Wire: `RenderMode`). `model_preview` and `vehicle_preview` return the path of the GLB SixNG
 wrote; the frontend loads it with `convertFileSrc` through Tauri's asset protocol, which is scoped to
 `$APPCACHE/work/models` and `$APPCACHE/work/vehicles`, because the GLB names its PNG textures by relative path.
 

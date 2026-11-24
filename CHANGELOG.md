@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.6.0 (2026-11-24)
+
+- 3D render modes: Lit (textures and lights), Unlit (textures only), Clay (grey shape), Normals (surface
+  directions as colours) and Wire (triangle edges), kept from one model to the next.
+
 ## 0.5.1 (2026-11-24)
 
 - Model and vehicle exports follow their archive: one that changes (a download finishing, a game update) gets fresh
