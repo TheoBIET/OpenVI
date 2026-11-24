@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, ensure};
-use openvi_formats::{ResourceDetails, TextPreview, resource_details, resource_text, texture_png};
+use openvi_formats::{ResourceDetails, TextPreview, resource_details, resource_png, resource_text, texture_png};
 use tauri::AppHandle;
 use tauri::ipc::Response;
 
@@ -13,8 +13,8 @@ use crate::index;
 /// Largest side of a texture preview, in pixels.
 const PREVIEW_SIZE: u32 = 1024;
 
-/// Most bytes of a text resource the viewer shows.
-const TEXT_LIMIT: usize = 512 * 1024;
+/// Most bytes of a text resource the document view shows: as for loose files.
+const TEXT_LIMIT: usize = crate::file::TEXT_LIMIT;
 
 /// The archive inside `root` and the offset a resource path (`<archive>#<offset in hex>`) points at.
 fn resolve(root: &Path, resource: &str) -> Result<(PathBuf, String, u64)> {
@@ -46,6 +46,11 @@ fn text(root: &Path, cache: &Path, resource: &str) -> Result<TextPreview> {
     resource_text(&archive, &relative, cache, offset, TEXT_LIMIT)
 }
 
+fn png(root: &Path, cache: &Path, resource: &str) -> Result<Vec<u8>> {
+    let (archive, relative, offset) = resolve(root, resource)?;
+    resource_png(&archive, &relative, cache, offset)
+}
+
 /// Details of the resource at `path` (`<archive>#<offset>`), which must be inside `root`.
 #[tauri::command]
 pub async fn resource_info(app: AppHandle, root: PathBuf, path: String) -> Result<ResourceDetails, String> {
@@ -74,6 +79,17 @@ pub async fn resource_text_preview(app: AppHandle, root: PathBuf, path: String) 
     tauri::async_runtime::spawn_blocking(move || text(&root, &cache, &path))
         .await
         .map_err(|error| error.to_string())?
+        .map_err(|error| format!("{error:#}"))
+}
+
+/// The bytes of the PNG image resource at `path`.
+#[tauri::command]
+pub async fn resource_image(app: AppHandle, root: PathBuf, path: String) -> Result<Response, String> {
+    let cache = index::cache_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || png(&root, &cache, &path))
+        .await
+        .map_err(|error| error.to_string())?
+        .map(Response::new)
         .map_err(|error| format!("{error:#}"))
 }
 

@@ -1,6 +1,7 @@
 //! OpenVI desktop backend: Tauri commands the React frontend calls.
 
 mod archive;
+mod file;
 mod fs;
 mod index;
 mod resource;
@@ -19,7 +20,10 @@ pub fn run() {
             index::index_status,
             resource::resource_info,
             resource::texture_preview,
-            resource::resource_text_preview
+            resource::resource_text_preview,
+            resource::resource_image,
+            file::file_preview,
+            file::file_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenVI");
