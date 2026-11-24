@@ -18,7 +18,8 @@ pub fn run() {
             index::search_index,
             index::index_status,
             resource::resource_info,
-            resource::texture_preview
+            resource::texture_preview,
+            resource::resource_text_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenVI");

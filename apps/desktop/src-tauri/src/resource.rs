@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, ensure};
-use openvi_formats::{ResourceDetails, resource_details, texture_png};
+use openvi_formats::{ResourceDetails, TextPreview, resource_details, resource_text, texture_png};
 use tauri::AppHandle;
 use tauri::ipc::Response;
 
@@ -12,6 +12,9 @@ use crate::index;
 
 /// Largest side of a texture preview, in pixels.
 const PREVIEW_SIZE: u32 = 1024;
+
+/// Most bytes of a text resource the viewer shows.
+const TEXT_LIMIT: usize = 512 * 1024;
 
 /// The archive inside `root` and the offset a resource path (`<archive>#<offset in hex>`) points at.
 fn resolve(root: &Path, resource: &str) -> Result<(PathBuf, String, u64)> {
@@ -38,6 +41,11 @@ fn preview(root: &Path, cache: &Path, resource: &str, texture: usize) -> Result<
     texture_png(&archive, &relative, cache, offset, texture, PREVIEW_SIZE)
 }
 
+fn text(root: &Path, cache: &Path, resource: &str) -> Result<TextPreview> {
+    let (archive, relative, offset) = resolve(root, resource)?;
+    resource_text(&archive, &relative, cache, offset, TEXT_LIMIT)
+}
+
 /// Details of the resource at `path` (`<archive>#<offset>`), which must be inside `root`.
 #[tauri::command]
 pub async fn resource_info(app: AppHandle, root: PathBuf, path: String) -> Result<ResourceDetails, String> {
@@ -56,6 +64,16 @@ pub async fn texture_preview(app: AppHandle, root: PathBuf, path: String, textur
         .await
         .map_err(|error| error.to_string())?
         .map(Response::new)
+        .map_err(|error| format!("{error:#}"))
+}
+
+/// The text of the XML or plain-text resource at `path`, cut at [`TEXT_LIMIT`].
+#[tauri::command]
+pub async fn resource_text_preview(app: AppHandle, root: PathBuf, path: String) -> Result<TextPreview, String> {
+    let cache = index::cache_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || text(&root, &cache, &path))
+        .await
+        .map_err(|error| error.to_string())?
         .map_err(|error| format!("{error:#}"))
 }
 
@@ -94,6 +112,15 @@ mod tests {
         assert_eq!(info.entry.name.as_deref(), Some(fixtures::DICTIONARY_NAME));
         assert_eq!(info.textures.len(), 1);
         assert!(png.unwrap().starts_with(b"\x89PNG"));
+    }
+
+    #[test]
+    fn reads_a_text_resource() {
+        let (root, cache, offsets) = game_folder("text");
+        let xml = text(&root, &cache, &resource_path(&root, offsets[2]));
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert!(xml.unwrap().text.contains("<vehicles>"));
     }
 
     #[test]

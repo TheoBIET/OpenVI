@@ -36,3 +36,11 @@ export async function texturePreview(root: string, path: string, texture: number
   const bytes = await invoke<ArrayBuffer>('texture_preview', { root, path, texture });
   return URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
 }
+
+/** The start of a text resource; `truncated` when it goes on past what the viewer shows. */
+export type TextPreview = { text: string; truncated: boolean };
+
+/** The text of the XML or plain-text resource at `path`. */
+export function textPreview(root: string, path: string): Promise<TextPreview> {
+  return invoke<TextPreview>('resource_text_preview', { root, path });
+}
