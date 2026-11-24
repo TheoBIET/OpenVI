@@ -161,3 +161,7 @@ filters the list; Enter searches the whole index, and opening a result opens its
   shows a filled bar for a counted step and a sweeping bar otherwise (`LoadingPanel.tsx`).
 - Windows: `build.rs` embeds tauri-build's manifest (Common Controls 6) in every executable through the linker, so the
   test executables start.
+- Animations: the character is assembled once (`character_glb` without a clip); a clip is exported on its own with
+  `skeleton_only` (no meshes or textures) and loaded onto the model on screen (`SceneHandle.loadAnimations`): three.js
+  binds its tracks to the joints of the same name, which SixNG builds from the same parts. The last clip dictionary
+  stays in memory (`animations::load_dictionary`). A model without meshes is drawn as its bones.

@@ -2,6 +2,13 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.13.0 (2026-11-24)
+
+- Animations: a new clip no longer reassembles the character. The character is assembled once; each clip is exported
+  on its own (skeleton and animation only) and played on the model on screen. The last clip dictionary stays in
+  memory, so clips of one dictionary follow each other quickly.
+- Skeleton only shows the bones (a model without meshes was invisible).
+
 ## 0.12.0 (2026-11-24)
 
 - Faster: scan indexes stay in memory (an archive's index was parsed again, up to hundreds of MB, for every resource
