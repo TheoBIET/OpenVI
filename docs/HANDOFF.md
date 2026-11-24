@@ -57,13 +57,19 @@ Record the results here, fix what breaks, commit.
 
 Results so far (Windows, release build of the example):
 
-| Archive      | Announced entries | Carved resources                 | Coverage | First scan |
-| ------------ | ----------------- | -------------------------------- | -------- | ---------- |
-| `common.rpf` | 418               | 225 (208 XML, 11 text, 6 binary) | 85.0 %   | 0.5 s      |
+| Archive      | Announced entries | Carved resources                  | Coverage | First scan |
+| ------------ | ----------------- | --------------------------------- | -------- | ---------- |
+| `common.rpf` | 418               | 225 (208 XML, 11 text, 6 binary)  | 85.0 %   | 0.5 s      |
+| `levels.rpf` | 2,078             | 46,423 (23,273 models, all named) | 9.2 %    | 175.7 s    |
 
-Open: the header announces 418 entries but 225 are carved. Possibly stored (uncompressed) entries, which the zlib
-carver cannot see, or folders counted in the header. A gap report (largest uncovered ranges, their first bytes;
-SixNG has `gaps.rs`) would tell.
+**These runs used an incomplete copy of the game files**: missing parts read as zeros, so counts and coverage are
+not references. SixNG measures `levels.rpf` at 98.3 % coverage, 523,532 entries, 236,604 named, about 3 min. What
+the runs do show: the carver and the name pass work on real data (every drawable, fragment and texture dictionary
+found carried its name), and a full pass over `levels.rpf` takes about 3 min in release. Redo the table on complete
+files; the cache rescans an archive by itself when its size or modification time changes.
+
+Open: `common.rpf` announces 418 entries for 225 carved. Possibly stored (uncompressed) entries, which the zlib
+carver cannot see, folders counted in the header, or the missing parts above.
 
 ## Then, in order
 
