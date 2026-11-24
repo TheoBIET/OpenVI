@@ -13,10 +13,10 @@ flowchart TB
   subgraph backend["Rust backend (apps/desktop/src-tauri)"]
     fs["fs: list_dir<br/>confined to the opened folder"]
     adapter["openvi-formats crate<br/>the only caller of sixng-core"]
-    indexer["indexer (planned)"]
+    indexer["index.rs<br/>index_game · search_index"]
   end
   sixng["sixng-core<br/>GPL-3.0-only"]
-  db[("index.sqlite<br/>per game version")]
+  db[("openvi-index<br/>SQLite + FTS5, per game folder")]
 
   explorer -- invoke --> fs
   viewers -- invoke --> adapter
@@ -79,3 +79,16 @@ exposes its own types, so a SixNG update stops there:
 - Feature `fixtures`: a synthetic archive for the tests of other crates.
 
 Hash → name lookups (`sixng_core::names`) and resource decoding come with the index and the viewers.
+
+## Index
+
+`crates/openvi-index` keeps the scans in SQLite (bundled, WAL), one database per game folder in the app's local data
+folder (`index/<folder>-<hash>.sqlite`; the game version cannot be read from the files yet, so it is per folder).
+Tables `archives` (path, size, modification time) and `resources` (offset, size, type, name), plus an FTS5 table of
+names with the trigram tokenizer, so any part of a name matches (`bench` finds `prop_bench_01`). Results come best
+first: exact name, then names starting with the query, then shorter names. The schema is versioned; a mismatch
+rebuilds the index, which is only a cache of scans.
+
+The index fills two ways: opening an archive records its scan, and `index_game` scans every `.rpf` of the folder that
+changed since it was indexed, one at a time, emitting `index-progress` events. In the UI, typing in the filter box
+filters the list; Enter searches the whole index, and opening a result opens its archive with the resource selected.

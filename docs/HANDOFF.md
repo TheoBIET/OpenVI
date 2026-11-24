@@ -16,11 +16,16 @@ State of the work and the next task, for whoever picks it up. Update it when you
   by their offset, dimmed. First opening shows a scan panel with progress; the scan is cached in the app cache
   folder. Backend `open_archive` in `apps/desktop/src-tauri/src/archive.rs`; the list is virtualised. 10 Rust tests
   on synthetic bytes. **Not yet seen on real archives or by eye.**
+- **Done:** index and search. `crates/openvi-index` (SQLite + FTS5 trigram, one database per game folder) holds
+  every scanned archive; opening an archive records it; the toolbar's Index button scans every changed `.rpf` with
+  progress in the status bar. Enter in the filter box searches all indexed names; a result opens its archive with the
+  resource selected; Back leaves the results. Backend in `apps/desktop/src-tauri/src/index.rs`. 15 Rust tests on
+  synthetic bytes. **Not yet seen by eye.**
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 10 tests.
+  `cargo test` now runs 15 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
@@ -40,7 +45,7 @@ pnpm dev
 
 If PowerShell refuses to run `pnpm`: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-## Next task: check the archive view on real game files
+## Next task: check the archive view and the search on real game files
 
 The maintainer tests with his own copy of the game files. Keep everything from them out of the repository
 (`.gitignore` blocks the usual extensions; never paste game files or extracted assets into issues or docs).
@@ -50,7 +55,9 @@ The maintainer tests with his own copy of the game files. Keep everything from t
 2. Go back, reopen it: the cached scan answers at once.
 3. Open the biggest archive (`levels.rpf` or `packs.rpf`): note the scan time, and check the list scrolls smoothly
    and the filter stays responsive. The whole listing crosses the IPC as JSON in one piece; if that is slow, page it.
-4. Without the app: `cargo run --release -p openvi-formats --example list_archive -- <game folder>\common.rpf`
+4. Click Index: the status bar follows each archive; afterwards, type a name part (`bench`, `door`) and press
+   Enter. Check results, their Archive column, and that double-clicking one opens its archive on it.
+5. Without the app: `cargo run --release -p openvi-formats --example list_archive -- <game folder>\common.rpf`
    prints counts by type, how many are named, and the coverage.
 
 Record the results here, fix what breaks, commit.
@@ -73,15 +80,14 @@ carver cannot see, folders counted in the header, or the missing parts above.
 
 ## Then, in order
 
-1. **Index**: SQLite (`rusqlite`, bundled, FTS5), one database per game version in the app data folder; the filter
-   box grows into search. Add hash → name lookups (`sixng_core::names`) to the adapter.
-2. **Viewers**: properties panel (`sixng_core::resource::Resource`); texture preview (PNG); model preview (glTF from
+1. **Viewers**: properties panel (`sixng_core::resource::Resource`); texture preview (PNG); model preview (glTF from
    `sixng-core` into three.js); text tables.
-3. **Data-mining views** ([PRODUCT.md](PRODUCT.md)).
-4. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
+2. **Data-mining views** ([PRODUCT.md](PRODUCT.md)).
+3. **Publishing**: green CI, a first tagged release (release workflow), then the GitHub Pages site.
 
 ## Open questions for the maintainer
 
+- The index is per game folder; a per-version index (to diff updates) needs a way to read the game version.
 - Code signing for releases (macOS notarisation, Windows); builds are unsigned for now.
 
 ## Working with the maintainer
