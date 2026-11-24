@@ -36,11 +36,14 @@ State of the work and the next task, for whoever picks it up. Update it when you
   view); double-clicking a vehicle shows the whole car in any spawn configuration. SixNG exports the GLB into
   `<cache>/work/models` or `<cache>/work/vehicles`; the frontend loads it through the asset protocol (scoped to those
   two folders) so the PNG textures beside it resolve. **Never seen: needs real models.**
+- **Done (0.5.0):** exports. The properties panel saves any resource inflated (Save raw) and the shown texture as a
+  full-size PNG; the 3D view copies the model or vehicle export (GLB and textures) to a folder. Backend
+  `apps/desktop/src-tauri/src/export.rs`; model copies only come from the work folder's exports.
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
   `rustup component add clippy rustfmt`. The maintainer ran the explorer on his files; list timings not recorded.
-  `cargo test` now runs 35 tests.
+  `cargo test` now runs 38 tests.
 - **Never run yet:** Linux builds, the release workflow, installers, code signing. CI runs from the first push to
   <https://github.com/TheoBIET/OpenVI>.
 
@@ -106,8 +109,8 @@ carver cannot see, folders counted in the header, or the missing parts above.
 
 1. **Check on complete files** (the maintainer's copy is incomplete): the archive view, search, textures, the
    vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
-2. **Exports**: save a texture as PNG or DDS, a text resource as a file, a model or vehicle as GLB (copy the export
-   out of the work folder; the dialog plugin and `dialog:allow-save` are in).
+2. **More exports**: DDS for textures, a whole texture dictionary at once, batch exports of a filtered list or of
+   the vehicle catalog's models.
 3. **More catalogs**, like vehicles: weapons (`sixng_core::weapon`), peds and outfits, text tables
    (`sixng_core::text`); then the other data-mining views of [PRODUCT.md](PRODUCT.md).
 4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed

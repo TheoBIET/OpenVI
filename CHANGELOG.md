@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.5.0 (2026-11-24)
+
+- Exports: Save raw writes any resource inflated, Save PNG writes the shown texture at full size, and the 3D view's
+  Export copies a model or vehicle (GLB and textures) to a folder.
+
 ## 0.4.0 (2026-11-24)
 
 - 3D preview: drawables, fragments and drawable dictionaries open in an orbitable three.js view with their textures
