@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
+import { formatSize } from './format';
+
 /** One vehicle model, as the backend's catalog flattens it. */
 export type Vehicle = {
   model: string | null;
@@ -25,7 +27,15 @@ export type Vehicle = {
 
 export type VehicleCatalog = { vehicles: Vehicle[]; vehiclesJson: string; handlingJson: string | null };
 
-export type CatalogProgress = { archive: string; phase: 'carving' | 'naming'; done: number; total: number };
+/** One step of a long operation behind a section: what is going on and, when counted, how far (`total` 0: no count). */
+export type CatalogProgress = { label: string; done: number; total: number; bytes: boolean };
+
+/** A step as one line: its label, and its count when it has one. */
+export function describeStep(step: CatalogProgress): string {
+  if (step.total === 0) return step.label;
+  const amount = (value: number) => (step.bytes ? formatSize(value) : value.toLocaleString('en-US'));
+  return `${step.label} · ${amount(step.done)} of ${amount(step.total)}`;
+}
 
 /** Decoding takes seconds: one catalog per game folder per session. */
 const cache = new Map<string, Promise<VehicleCatalog>>();

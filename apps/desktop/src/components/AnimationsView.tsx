@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { type Clip, type ClipDictionary, animationClips, animationDictionaries } from '../lib/animations';
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
 import { type Character, characterList, characterPreview } from '../lib/characters';
-import { formatSize } from '../lib/format';
+import { LoadingPanel } from './LoadingPanel';
 import { ModelView, ModelViewSkeleton } from './ModelView';
 
 type Loaded<T> =
@@ -108,25 +108,13 @@ export function AnimationsView({ root, filter }: { root: string; filter: string 
   }, [dictionaries, filter]);
 
   if (dictionaries.state === 'loading' || dictionaries.state === 'idle') {
-    const ratio = progress && progress.total > 0 ? Math.min(progress.done / progress.total, 1) : 0;
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center p-10" aria-busy="true">
-        <div className="flex w-80 flex-col items-center text-center">
-          <Clapperboard className="mb-3 size-8 text-primary" />
-          <h2 className="font-title text-foreground">Listing the animations</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            The first time scans anim.rpf and reads each clip dictionary&apos;s name (about a minute).
-          </p>
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-accent-gradient" style={{ width: `${ratio * 100}%` }} />
-          </div>
-          <p className="mt-2 font-mono text-xs text-muted-foreground tabular-nums">
-            {progress
-              ? `${progress.archive} · ${progress.phase === 'carving' ? `finding resources ${formatSize(progress.done)}` : `reading names ${progress.done}`}`
-              : 'Reading dictionary names…'}
-          </p>
-        </div>
-      </main>
+      <LoadingPanel
+        icon={Clapperboard}
+        title="Listing the animations"
+        note="The first time scans anim.rpf and reads each clip dictionary's name (about a minute); then it is cached."
+        step={progress}
+      />
     );
   }
   if (dictionaries.state === 'failed') {

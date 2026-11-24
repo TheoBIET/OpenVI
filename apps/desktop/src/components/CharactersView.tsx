@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
 import { type Character, characterList, characterPreview } from '../lib/characters';
-import { formatSize } from '../lib/format';
+import { LoadingPanel } from './LoadingPanel';
 import { listKeys, ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; characters: Character[] } | { state: 'failed'; error: string };
@@ -53,23 +53,13 @@ export function CharactersView({
   }, [loaded, filter, kind]);
 
   if (loaded.state === 'loading') {
-    const ratio = progress && progress.total > 0 ? Math.min(progress.done / progress.total, 1) : 0;
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center p-10" aria-busy="true">
-        <div className="flex w-80 flex-col items-center text-center">
-          <Users className="mb-3 size-8 text-primary" />
-          <h2 className="font-title text-foreground">Finding the characters</h2>
-          <p className="mt-1 text-xs text-muted-foreground">The first time scans packs.rpf, where their parts are.</p>
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-accent-gradient" style={{ width: `${ratio * 100}%` }} />
-          </div>
-          <p className="mt-2 font-mono text-xs text-muted-foreground tabular-nums">
-            {progress
-              ? `${progress.archive} · ${progress.phase === 'carving' ? `finding resources ${formatSize(progress.done)}` : `reading names ${progress.done}`}`
-              : 'Reading…'}
-          </p>
-        </div>
-      </main>
+      <LoadingPanel
+        icon={Users}
+        title="Finding the characters"
+        note="The first time scans packs.rpf, where their parts are."
+        step={progress}
+      />
     );
   }
   if (loaded.state === 'failed') {

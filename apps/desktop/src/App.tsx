@@ -321,6 +321,16 @@ export function App() {
     }
   }
 
+  // Monaco and three.js are split out and loaded on first use; fetch them once the app has settled, so the first
+  // document or model opens without waiting for them.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void import('./lib/monaco');
+      void import('./lib/scene');
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // Reopen the folder from the last session; the backend refuses it if it is gone.
   useEffect(() => {
     const last = localStorage.getItem(lastFolderKey);

@@ -1,8 +1,7 @@
 import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { type CatalogProgress, onCatalogProgress, type Vehicle } from '../lib/catalog';
-import { formatSize } from '../lib/format';
+import { type CatalogProgress, describeStep, onCatalogProgress, type Vehicle } from '../lib/catalog';
 import { vehiclePreview } from '../lib/model';
 import { ModelView, ModelViewSkeleton } from './ModelView';
 
@@ -86,14 +85,8 @@ export function VehiclePreview({
     </>
   );
 
-  let waiting = `Exporting ${name} with its wheels…`;
-  if (progress) {
-    const step =
-      progress.phase === 'carving'
-        ? `finding resources ${formatSize(progress.done)} of ${formatSize(progress.total)}`
-        : `reading names ${progress.done} of ${progress.total}`;
-    waiting = `Scanning ${progress.archive} · ${step}`;
-  }
+  // The backend's current step: the scan of levels.rpf the first time, then the export.
+  const waiting = progress ? describeStep(progress) : `Exporting ${name} with its wheels…`;
 
   // The configuration on screen stays (blurred) while the next one is exported.
   if (shown) {

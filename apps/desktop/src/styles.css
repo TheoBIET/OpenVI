@@ -156,3 +156,17 @@ body {
     transform: translateX(100%);
   }
 }
+
+/* A progress bar without a count: a segment sweeping across, to show the work goes on. */
+.progress-sweep {
+  animation: progress-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
