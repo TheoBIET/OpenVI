@@ -128,6 +128,12 @@ assemble from `packs.rpf`, the parts of one by slot, and exports a look (a set o
 `outfit::export_outfit` into `<cache>/work/characters/<sources>/<name>_<look hash>/`, reused until `packs.rpf` or a
 texture store changes. The 3D view's animation bar plays any animations a GLB carries (`THREE.AnimationMixer`).
 
+The Animations section (`animations.rs` in the app, `openvi_formats::animations`) lists the clip dictionaries of
+`anim.rpf` (`sixng_core::anim::dictionaries`, cached in `<work>/index/anim.clipdicts.json`, dropped when `anim.rpf`
+is newer) and their clips; a clip plays through `character_glb` with a clip, which hands it to `export_outfit`
+(bone tracks on the joints of the same name; `anim_only` for the skeleton alone). The look folder's name includes
+the clip, and its sources `anim.rpf`'s state.
+
 ## Index
 
 `crates/openvi-index` keeps the scans in SQLite (bundled, WAL), one database per game folder in the app's local data

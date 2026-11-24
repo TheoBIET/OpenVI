@@ -2,6 +2,12 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.9.0 (2026-11-24)
+
+- Animations section: the clip dictionaries of `anim.rpf` (filter by name), the clips of the one picked, and the clip
+  played on a character (guessed from the dictionary name, or picked) or on its skeleton alone. The first listing
+  reads every dictionary's name (about a minute) and is cached until `anim.rpf` changes.
+
 ## 0.8.0 (2026-11-24)
 
 - Characters section: every character and animal SixNG can assemble from `packs.rpf` (filter by name, characters or
