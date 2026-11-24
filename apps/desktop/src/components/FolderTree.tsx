@@ -16,7 +16,7 @@ type FolderTreeProps = {
 
 export function FolderTree(props: FolderTreeProps) {
   return (
-    <aside className="w-64 shrink-0 overflow-auto border-r border-ink-800 bg-ink-900 py-1" aria-label="Folders">
+    <aside className="w-64 shrink-0 overflow-auto border-r border-border bg-card py-1" aria-label="Folders">
       <TreeRow entry={props.root} depth={0} {...props} />
     </aside>
   );
@@ -37,7 +37,7 @@ function TreeRow({ entry, depth, ...props }: FolderTreeProps & { entry: Entry; d
         onClick={() => (isFolder ? props.onNavigate(entry.path) : props.onActivate(entry))}
         style={{ paddingLeft: depth * 14 + 4 }}
         className={`flex h-6 cursor-default items-center gap-1 pr-2 whitespace-nowrap ${
-          isCurrent ? 'bg-flamingo/15 text-white' : 'hover:bg-ink-800/70'
+          isCurrent ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary'
         }`}
       >
         <button
@@ -48,7 +48,7 @@ function TreeRow({ entry, depth, ...props }: FolderTreeProps & { entry: Entry; d
             event.stopPropagation();
             if (isFolder) props.onToggle(entry.path);
           }}
-          className={`grid size-4 shrink-0 place-items-center text-ink-400 ${isFolder ? '' : 'invisible'}`}
+          className={`grid size-4 shrink-0 place-items-center text-muted-foreground ${isFolder ? '' : 'invisible'}`}
         >
           <ChevronRight className={`size-3.5 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
         </button>

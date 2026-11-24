@@ -36,18 +36,18 @@ export function EntryIcon({ entry, open = false }: { entry: Entry; open?: boolea
   const className = 'size-4 shrink-0';
   if (entry.kind === 'folder') {
     const Icon = open ? FolderOpen : Folder;
-    return <Icon className={`${className} text-gold`} />;
+    return <Icon className={`${className} text-accent-mid`} />;
   }
-  if (entry.kind === 'archive') return <Package className={`${className} text-sunset`} />;
+  if (entry.kind === 'archive') return <Package className={`${className} text-primary`} />;
   if (entry.kind === 'resource') {
     const Icon = resourceIcons[entry.typeName ?? ''] ?? Binary;
-    const tone = Icon === Box || Icon === Boxes ? 'text-lagoon' : 'text-ink-400';
+    const tone = Icon === Box || Icon === Boxes ? 'text-highlight' : 'text-muted-foreground';
     return <Icon className={`${className} ${tone}`} />;
   }
   const extension = extensionOf(entry.name) ?? '';
-  if (codeExtensions.has(extension)) return <FileCode className={`${className} text-lagoon`} />;
-  if (extension === 'txt') return <FileText className={`${className} text-ink-400`} />;
-  if (extension === 'bk2') return <FileVideo className={`${className} text-ink-400`} />;
-  if (extension === 'bin') return <Binary className={`${className} text-ink-400`} />;
-  return <File className={`${className} text-ink-400`} />;
+  if (codeExtensions.has(extension)) return <FileCode className={`${className} text-highlight`} />;
+  if (extension === 'txt') return <FileText className={`${className} text-muted-foreground`} />;
+  if (extension === 'bk2') return <FileVideo className={`${className} text-muted-foreground`} />;
+  if (extension === 'bin') return <Binary className={`${className} text-muted-foreground`} />;
+  return <File className={`${className} text-muted-foreground`} />;
 }

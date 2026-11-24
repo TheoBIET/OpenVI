@@ -150,7 +150,7 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
       aria-label="Items"
       className="flex min-w-0 flex-1 flex-col overflow-hidden outline-none"
     >
-      <div className={`${columns} h-7 shrink-0 border-b border-ink-800 bg-ink-900 px-3 text-xs text-ink-400`}>
+      <div className={`${columns} h-7 shrink-0 border-b border-border bg-card px-3 text-xs text-muted-foreground`}>
         <span>Name</span>
         <span>Type</span>
         <span className="text-right">Size</span>
@@ -164,7 +164,7 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
         }
         className="flex-1 overflow-auto"
       >
-        {groups.length === 0 && <p className="px-3 py-6 text-center text-ink-400">No items match.</p>}
+        {groups.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No items match.</p>}
         <div className="relative" style={{ height: height + 8 }}>
           {visible.map((line) =>
             line.header ? (
@@ -173,11 +173,11 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
                 role="group"
                 aria-label={line.header.label}
                 style={{ top: line.top, height: headerHeight }}
-                className="absolute inset-x-0 flex items-end gap-2 px-3 pb-1 text-xs font-medium text-flamingo"
+                className="absolute inset-x-0 flex items-end gap-2 px-3 pb-1 font-title text-xs text-accent-solid"
               >
                 {line.header.label}
-                <span className="text-ink-400">({line.header.entries.length.toLocaleString('en-US')})</span>
-                <span className="mb-1.5 h-px flex-1 bg-ink-800" />
+                <span className="text-muted-foreground">({line.header.entries.length.toLocaleString('en-US')})</span>
+                <span className="mb-1.5 h-px flex-1 bg-muted" />
               </div>
             ) : (
               <Row
@@ -225,23 +225,23 @@ function Row({
       onDoubleClick={() => onActivate(entry)}
       style={{ top, height: rowHeight }}
       className={`${columns} absolute inset-x-0 cursor-default px-3 ${
-        selected ? 'bg-flamingo/15 text-white shadow-[inset_2px_0_0_var(--color-flamingo)]' : 'hover:bg-ink-800/60'
+        selected ? 'bg-primary/15 text-foreground shadow-[inset_2px_0_0_var(--color-primary)]' : 'hover:bg-secondary'
       }`}
     >
       <span className="flex min-w-0 items-center gap-2">
         <EntryIcon entry={entry} />
-        <span className={`truncate ${unnamed ? 'font-mono text-xs text-ink-400' : ''}`}>{entry.name}</span>
+        <span className={`truncate ${unnamed ? 'font-mono text-xs text-muted-foreground' : ''}`}>{entry.name}</span>
       </span>
-      <span className="truncate text-ink-400">{typeLabel(entry)}</span>
-      <span className="text-right font-mono text-xs text-ink-400 tabular-nums">
+      <span className="truncate text-muted-foreground">{typeLabel(entry)}</span>
+      <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
         {entry.kind === 'folder' ? `${entry.items ?? '?'} items` : formatSize(entry.size)}
       </span>
       {extra === 'offset' && (
-        <span className="text-right font-mono text-xs text-ink-400 tabular-nums">
+        <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
           {entry.offset === undefined ? '' : formatOffset(entry.offset)}
         </span>
       )}
-      {extra === 'archive' && <span className="truncate text-ink-400">{entry.location}</span>}
+      {extra === 'archive' && <span className="truncate text-muted-foreground">{entry.location}</span>}
     </div>
   );
 }

@@ -7,48 +7,58 @@ self.MonacoEnvironment = {
   getWorker: (_id: string, label: string) => (label === 'json' ? new JsonWorker() : new EditorWorker()),
 };
 
-// The tokens of src/styles.css: night greys, sunset accents, lagoon for values.
-const ink = { 950: '#0e0b15', 900: '#15111f', 800: '#211b30', 700: '#2f2744', 400: '#9b92b0', 200: '#e4def0' };
-const accent = { flamingo: '#ff4f9a', sunset: '#ff8a4c', gold: '#ffc35c', lagoon: '#2fd5c8' };
+// The tokens of src/styles.css: neutral surfaces, the magenta → violet → cyan accent.
+const surface = {
+  background: '#121212',
+  card: '#171717',
+  secondary: '#1e1e1e',
+  muted: '#252525',
+  border: '#2d2d2d',
+  input: '#383838',
+  mutedForeground: '#9c9c9c',
+  foreground: '#f0f0f0',
+};
+const accent = { from: '#ff4fa3', mid: '#a855f7', to: '#38d6ff', warning: '#e2ad4b' };
 const bare = (color: string) => color.slice(1);
 
 monaco.editor.defineTheme('openvi', {
   base: 'vs-dark',
   inherit: true,
   rules: [
-    { token: '', foreground: bare(ink[200]) },
-    { token: 'comment', foreground: bare(ink[400]), fontStyle: 'italic' },
-    { token: 'delimiter', foreground: bare(ink[400]) },
-    { token: 'tag', foreground: bare(accent.flamingo) },
-    { token: 'metatag', foreground: bare(accent.sunset) },
-    { token: 'attribute.name', foreground: bare(accent.gold) },
-    { token: 'attribute.value', foreground: bare(accent.lagoon) },
-    { token: 'string', foreground: bare(accent.lagoon) },
-    { token: 'string.key.json', foreground: bare(accent.flamingo) },
-    { token: 'string.value.json', foreground: bare(accent.lagoon) },
-    { token: 'number', foreground: bare(accent.gold) },
-    { token: 'keyword', foreground: bare(accent.sunset) },
+    { token: '', foreground: bare(surface.foreground) },
+    { token: 'comment', foreground: bare(surface.mutedForeground), fontStyle: 'italic' },
+    { token: 'delimiter', foreground: bare(surface.mutedForeground) },
+    { token: 'tag', foreground: bare(accent.from) },
+    { token: 'metatag', foreground: bare(accent.mid) },
+    { token: 'attribute.name', foreground: bare(accent.mid) },
+    { token: 'attribute.value', foreground: bare(accent.to) },
+    { token: 'string', foreground: bare(accent.to) },
+    { token: 'string.key.json', foreground: bare(accent.from) },
+    { token: 'string.value.json', foreground: bare(accent.to) },
+    { token: 'number', foreground: bare(accent.warning) },
+    { token: 'keyword', foreground: bare(accent.mid) },
   ],
   colors: {
-    'editor.background': ink[950],
-    'editor.foreground': ink[200],
-    'editor.lineHighlightBackground': ink[900],
-    'editor.selectionBackground': `${accent.flamingo}40`,
-    'editor.inactiveSelectionBackground': `${accent.flamingo}26`,
-    'editor.findMatchBackground': `${accent.sunset}66`,
-    'editor.findMatchHighlightBackground': `${accent.gold}33`,
-    'editorLineNumber.foreground': ink[700],
-    'editorLineNumber.activeForeground': ink[400],
-    'editorIndentGuide.background1': ink[800],
-    'editorIndentGuide.activeBackground1': ink[700],
-    'editorWidget.background': ink[900],
-    'editorWidget.border': ink[800],
-    'input.background': ink[950],
-    'input.border': ink[800],
-    focusBorder: `${accent.flamingo}99`,
-    'scrollbarSlider.background': `${ink[700]}99`,
-    'scrollbarSlider.hoverBackground': ink[700],
-    'minimap.background': ink[950],
+    'editor.background': surface.background,
+    'editor.foreground': surface.foreground,
+    'editor.lineHighlightBackground': surface.card,
+    // Selected text: the first accent colour at 45 %, as everywhere in the app.
+    'editor.selectionBackground': `${accent.from}73`,
+    'editor.inactiveSelectionBackground': `${accent.from}33`,
+    'editor.findMatchBackground': `${accent.mid}80`,
+    'editor.findMatchHighlightBackground': `${accent.to}33`,
+    'editorLineNumber.foreground': surface.input,
+    'editorLineNumber.activeForeground': surface.mutedForeground,
+    'editorIndentGuide.background1': surface.muted,
+    'editorIndentGuide.activeBackground1': surface.input,
+    'editorWidget.background': surface.secondary,
+    'editorWidget.border': surface.border,
+    'input.background': surface.background,
+    'input.border': surface.border,
+    focusBorder: accent.from,
+    'scrollbarSlider.background': `${surface.muted}cc`,
+    'scrollbarSlider.hoverBackground': surface.input,
+    'minimap.background': surface.background,
   },
 });
 

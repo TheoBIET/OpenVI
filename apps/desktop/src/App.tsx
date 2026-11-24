@@ -300,7 +300,7 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="h-0.5 shrink-0 bg-linear-to-r from-flamingo via-sunset to-gold" />
+      <div className="h-0.5 shrink-0 bg-accent-gradient" />
       <Toolbar
         crumbs={crumbs}
         filter={filter}

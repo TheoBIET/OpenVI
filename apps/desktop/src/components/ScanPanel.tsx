@@ -16,9 +16,9 @@ export function ScanPanel({ name, progress }: { name: string; progress: ScanProg
   return (
     <main className="flex min-w-0 flex-1 items-center justify-center p-10" aria-busy="true">
       <div className="flex w-80 flex-col items-center text-center">
-        <Package className="mb-3 size-8 text-sunset" />
-        <h2 className="font-semibold text-white">Scanning {name}</h2>
-        <p className="mt-1 text-xs text-ink-400">
+        <Package className="mb-3 size-8 text-primary" />
+        <h2 className="font-title text-foreground">Scanning {name}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
           The first opening reads the whole archive; later openings answer at once.
         </p>
         <div
@@ -26,14 +26,11 @@ export function ScanPanel({ name, progress }: { name: string; progress: ScanProg
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(ratio * 100)}
-          className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-ink-800"
+          className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted"
         >
-          <div
-            className="h-full bg-linear-to-r from-flamingo via-sunset to-gold transition-[width]"
-            style={{ width: `${ratio * 100}%` }}
-          />
+          <div className="h-full bg-accent-gradient transition-[width]" style={{ width: `${ratio * 100}%` }} />
         </div>
-        <p className="mt-2 font-mono text-[11px] text-ink-400 tabular-nums">
+        <p className="mt-2 font-mono text-xs text-muted-foreground tabular-nums">
           {detail}
           {progress && ` · ${Math.round(ratio * 100)}%`}
         </p>

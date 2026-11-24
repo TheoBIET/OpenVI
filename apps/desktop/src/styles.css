@@ -1,19 +1,76 @@
 @import 'tailwindcss';
 
-/* Leonida at dusk: violet-tinted night greys, with the sunset kept for brand accents. */
+/* Fonts are bundled (offline desktop app): Barlow for text, Barlow Condensed for display, Geist Mono for code. */
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource-variable/geist-mono/wght.css';
+
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
-  --color-ink-950: #0e0b15;
-  --color-ink-900: #15111f;
-  --color-ink-800: #211b30;
-  --color-ink-700: #2f2744;
-  --color-ink-400: #9b92b0;
-  --color-ink-200: #e4def0;
-  --color-flamingo: #ff4f9a;
-  --color-sunset: #ff8a4c;
-  --color-gold: #ffc35c;
-  --color-lagoon: #2fd5c8;
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-title: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'Cascadia Code', monospace;
+
+  /* Surfaces: neutral greys, darkest first. */
+  --color-background: #121212;
+  --color-card: #171717;
+  --color-popover: #1b1b1b;
+  --color-secondary: #1e1e1e;
+  --color-muted: #252525;
+  --color-border: #2d2d2d;
+  --color-input: #383838;
+  --color-muted-foreground: #9c9c9c;
+  --color-foreground: #f0f0f0;
+
+  /* Accent: magenta → violet → cyan. Text on the gradient is --color-on-accent. */
+  --color-accent-from: #ff4fa3;
+  --color-accent-mid: #a855f7;
+  --color-accent-to: #38d6ff;
+  --color-accent-solid: #dd5593;
+  --color-primary: var(--color-accent-from);
+  --color-on-accent: #1d0a12;
+  --color-highlight: var(--color-accent-to);
+
+  /* Semantic colours, fixed. */
+  --color-live: #3fd6f2;
+  --color-destructive: #f0735f;
+  --color-warning: #e2ad4b;
+  --color-sunset: #f2915f;
+
+  --radius-sm: 5px;
+  --radius-md: 7.5px;
+  --radius-lg: 10px;
+  --radius-xl: 12.5px;
+  --radius-2xl: 15px;
+}
+
+@utility bg-accent-gradient {
+  background-image: linear-gradient(90deg, var(--color-accent-from), var(--color-accent-mid), var(--color-accent-to));
+}
+
+@utility text-accent-gradient {
+  background-image: linear-gradient(90deg, var(--color-accent-from), var(--color-accent-mid), var(--color-accent-to));
+  background-clip: text;
+  color: transparent;
+}
+
+/* Page and logo titles. */
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+}
+
+/* Section and card titles. */
+@utility font-title {
+  font-family: var(--font-title);
+  font-weight: 600;
 }
 
 html {
@@ -27,10 +84,48 @@ body,
 }
 
 body {
-  @apply bg-ink-950 font-sans text-[13px] text-ink-200 antialiased select-none;
+  @apply bg-background font-sans text-foreground antialiased select-none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  /* Top glow: three halos of the accent across the top of the window. */
+  background-image:
+    radial-gradient(
+      40rem 14rem at 10% -6rem,
+      color-mix(in srgb, var(--color-accent-from) 13%, transparent),
+      transparent
+    ),
+    radial-gradient(40rem 14rem at 55% -6rem, color-mix(in srgb, var(--color-accent-mid) 9%, transparent), transparent),
+    radial-gradient(40rem 14rem at 95% -6rem, color-mix(in srgb, var(--color-accent-to) 11%, transparent), transparent);
+  background-repeat: no-repeat;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent-from) 45%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-from);
+  outline-offset: 2px;
+}
+
+/* Monaco draws its own focus. */
+.monaco-editor :focus-visible {
+  outline: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted) transparent;
+}
+
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] *::before,
+[data-reduce-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* Behind texture previews, so transparent pixels show. */
 .checkerboard {
-  background: repeating-conic-gradient(var(--color-ink-800) 0 25%, var(--color-ink-950) 0 50%) 0 0 / 16px 16px;
+  background: repeating-conic-gradient(var(--color-secondary) 0 25%, var(--color-background) 0 50%) 0 0 / 16px 16px;
 }

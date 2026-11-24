@@ -21,7 +21,7 @@ export function CodeView({ value, language, wrap }: { value: string; language: s
         readOnly: true,
         domReadOnly: true,
         automaticLayout: true,
-        fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Code', monospace",
+        fontFamily: "'Geist Mono Variable', ui-monospace, 'Cascadia Code', monospace",
         fontSize: 12,
         lineHeight: 18,
         minimap: { enabled: true, renderCharacters: false },
@@ -58,7 +58,9 @@ export function CodeView({ value, language, wrap }: { value: string; language: s
   return (
     <div className="relative min-h-0 flex-1">
       <div ref={host} className="absolute inset-0" />
-      {!ready && <p className="absolute inset-0 grid place-items-center text-xs text-ink-400">Loading editor…</p>}
+      {!ready && (
+        <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">Loading editor…</p>
+      )}
     </div>
   );
 }

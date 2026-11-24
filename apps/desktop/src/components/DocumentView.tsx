@@ -93,14 +93,14 @@ export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
 
   return (
     <main aria-label={entry.name} className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-ink-800 bg-ink-900 px-3 text-xs text-ink-400">
-        <span className="truncate text-ink-200">{entry.name}</span>
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border bg-card px-3 text-xs text-muted-foreground">
+        <span className="truncate text-foreground">{entry.name}</span>
         {text && (
           <>
-            <span className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[11px]">{language}</span>
+            <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[11px]">{language}</span>
             <span className="font-mono tabular-nums">{text.text.split('\n').length.toLocaleString('en-US')} lines</span>
-            {text.truncated && <span className="text-sunset">first 8 MB only</span>}
-            {prettifyError && <span className="truncate text-flamingo">{prettifyError}</span>}
+            {text.truncated && <span className="text-warning">first 8 MB only</span>}
+            {prettifyError && <span className="truncate text-destructive">{prettifyError}</span>}
             <span className="ml-auto flex items-center gap-1">
               {canPrettify(language) && (
                 <ViewButton icon={Wand2} label="Format" active={pretty} onClick={togglePretty} />
@@ -120,9 +120,11 @@ export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
           </span>
         )}
       </div>
-      {loaded.state === 'loading' && <p className="grid flex-1 place-items-center text-xs text-ink-400">Reading…</p>}
+      {loaded.state === 'loading' && (
+        <p className="grid flex-1 place-items-center text-xs text-muted-foreground">Reading…</p>
+      )}
       {loaded.state === 'failed' && (
-        <p className="grid flex-1 place-items-center px-10 text-center text-xs text-flamingo">{loaded.error}</p>
+        <p className="grid flex-1 place-items-center px-10 text-center text-xs text-destructive">{loaded.error}</p>
       )}
       {text && <CodeView value={shown} language={language} wrap={wrap} />}
       {loaded.state === 'ready' && loaded.content.type === 'image' && (
@@ -138,7 +140,7 @@ export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
         </div>
       )}
       {loaded.state === 'ready' && loaded.content.type === 'none' && (
-        <p className="grid flex-1 place-items-center px-10 text-center text-xs text-ink-400">
+        <p className="grid flex-1 place-items-center px-10 text-center text-xs text-muted-foreground">
           {loaded.content.message}
         </p>
       )}
@@ -162,8 +164,8 @@ function ViewButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`inline-flex h-6 items-center gap-1 rounded px-1.5 ${
-        active ? 'bg-flamingo/15 text-white' : 'text-ink-200 hover:bg-ink-800'
+      className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
+        active ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
       }`}
     >
       <Icon className="size-3.5" />

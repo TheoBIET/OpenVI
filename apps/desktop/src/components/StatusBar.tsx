@@ -12,15 +12,15 @@ type StatusBarProps = {
 
 export function StatusBar({ shown, selected, notice, index, folderName }: StatusBarProps) {
   return (
-    <footer className="flex h-6 shrink-0 items-center gap-3 border-t border-ink-800 bg-ink-900 px-3 text-[11px] text-ink-400">
+    <footer className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-card px-3 text-xs text-muted-foreground">
       <span>{shown} items shown</span>
-      <span className="h-3 w-px bg-ink-800" />
+      <span className="h-3 w-px bg-muted" />
       <span>
         {selected
           ? `1 selected item${selected.kind === 'folder' ? '' : ` · ${formatSize(selected.size)}`}`
           : 'No selected items'}
       </span>
-      {notice && <span className="truncate text-sunset">{notice}</span>}
+      {notice && <span className="truncate text-warning">{notice}</span>}
       <span className="ml-auto flex min-w-0 items-center gap-3">
         {index && <span className="truncate">{index}</span>}
         {folderName && <span>{folderName}</span>}

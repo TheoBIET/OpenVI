@@ -43,7 +43,7 @@ function ToolButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex h-7 items-center gap-1.5 rounded px-1.5 text-ink-200 transition-colors hover:bg-ink-800 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+      className="inline-flex h-7 items-center gap-1.5 rounded-sm px-1.5 text-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
     >
       <Icon className="size-4" />
       {children}
@@ -54,17 +54,17 @@ function ToolButton({
 export function Toolbar(props: ToolbarProps) {
   const current = props.crumbs.at(-1);
   return (
-    <header className="flex h-11 shrink-0 items-center gap-2 border-b border-ink-800 bg-ink-900 px-2">
+    <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-2">
       <ToolButton icon={FolderOpen} label="Open game folder" onClick={props.onOpenFolder}>
         <span className="text-xs">Open</span>
       </ToolButton>
-      <span className="h-5 w-px bg-ink-800" />
+      <span className="h-5 w-px bg-muted" />
       <ToolButton icon={ArrowLeft} label="Back" disabled={!props.canBack} onClick={props.onBack} />
       <ToolButton icon={ArrowRight} label="Forward" disabled={!props.canForward} onClick={props.onForward} />
       <ToolButton icon={ArrowUp} label="Up one level" disabled={!props.canUp} onClick={props.onUp} />
       {props.indexLabel !== null && (
         <>
-          <span className="h-5 w-px bg-ink-800" />
+          <span className="h-5 w-px bg-muted" />
           <ToolButton
             icon={Database}
             label="Scan every archive into the index, for search"
@@ -78,17 +78,17 @@ export function Toolbar(props: ToolbarProps) {
 
       <nav
         aria-label="Path"
-        className="flex h-7 min-w-0 flex-1 items-center gap-0.5 overflow-hidden rounded border border-ink-800 bg-ink-950 px-2"
+        className="flex h-7 min-w-0 flex-1 items-center gap-0.5 overflow-hidden rounded-sm border border-border bg-background px-2"
       >
-        <span className="mr-1 text-xs font-semibold text-flamingo">OpenVI</span>
+        <span className="mr-1 text-accent-gradient font-display text-base">OpenVI</span>
         {props.crumbs.map((crumb, index) => (
           <span key={crumb.path} className="flex min-w-0 items-center gap-0.5">
-            <ChevronRight className="size-3.5 shrink-0 text-ink-700" />
+            <ChevronRight className="size-3.5 shrink-0 text-input" />
             <button
               type="button"
               title={crumb.path}
               onClick={() => props.onNavigate(crumb.path)}
-              className={`truncate rounded px-1 hover:bg-ink-800 ${index === props.crumbs.length - 1 ? 'text-white' : 'text-ink-400'}`}
+              className={`truncate rounded-sm px-1 hover:bg-muted ${index === props.crumbs.length - 1 ? 'text-foreground' : 'text-muted-foreground'}`}
             >
               {crumb.name}
             </button>
@@ -96,8 +96,8 @@ export function Toolbar(props: ToolbarProps) {
         ))}
       </nav>
 
-      <label className="flex h-7 w-72 items-center gap-2 rounded border border-ink-800 bg-ink-950 px-2 focus-within:border-flamingo/60">
-        <Search className="size-3.5 shrink-0 text-ink-400" />
+      <label className="flex h-7 w-72 items-center gap-2 rounded-sm border border-border bg-background px-2 focus-within:border-primary/60">
+        <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <input
           value={props.filter}
           onChange={(event) => props.onFilter(event.target.value)}
@@ -107,7 +107,7 @@ export function Toolbar(props: ToolbarProps) {
           placeholder={current ? `Filter ${current.name} · Enter searches all` : 'Filter'}
           title="Type to filter this list; press Enter to search every indexed archive"
           spellCheck={false}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-ink-400"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
       </label>
     </header>

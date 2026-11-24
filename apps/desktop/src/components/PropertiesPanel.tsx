@@ -60,13 +60,13 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
   return (
     <aside
       aria-label="Properties"
-      className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-ink-800 bg-ink-900"
+      className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-border bg-card"
     >
-      <header className="border-b border-ink-800 px-3 py-2">
-        <h2 className="truncate font-medium text-white" title={entry.name}>
+      <header className="border-b border-border px-3 py-2">
+        <h2 className="truncate font-medium text-foreground" title={entry.name}>
           {entry.name}
         </h2>
-        <p className="text-xs text-ink-400">{entry.typeName}</p>
+        <p className="text-xs text-muted-foreground">{entry.typeName}</p>
       </header>
       <div className="flex-1 overflow-auto">
         <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-3 py-2 text-xs">
@@ -82,28 +82,28 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
             </>
           )}
         </dl>
-        {details.state === 'failed' && <p className="px-3 py-2 text-xs text-flamingo">{details.error}</p>}
+        {details.state === 'failed' && <p className="px-3 py-2 text-xs text-destructive">{details.error}</p>}
         {isViewable(entry) && (
-          <p className="border-t border-ink-800 px-3 py-2 text-xs text-ink-400">
+          <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
             Double-click or press Enter to open it.
           </p>
         )}
         {hasTextures && (
-          <section aria-label="Textures" className="border-t border-ink-800 px-3 py-2">
-            <h3 className="mb-2 text-xs font-medium text-flamingo">
-              Textures <span className="text-ink-400">({textures.length})</span>
+          <section aria-label="Textures" className="border-t border-border px-3 py-2">
+            <h3 className="mb-2 font-title text-xs text-accent-solid">
+              Textures <span className="text-muted-foreground">({textures.length})</span>
             </h3>
-            <div className="checkerboard grid aspect-square place-items-center overflow-hidden rounded border border-ink-800">
+            <div className="checkerboard grid aspect-square place-items-center overflow-hidden rounded-sm border border-border">
               {preview.state === 'ready' && (
                 <img src={preview.value} alt={shown?.name ?? ''} className="max-h-full max-w-full object-contain" />
               )}
-              {preview.state === 'loading' && <span className="text-xs text-ink-400">Decoding…</span>}
+              {preview.state === 'loading' && <span className="text-xs text-muted-foreground">Decoding…</span>}
               {preview.state === 'failed' && (
-                <span className="px-3 text-center text-xs text-flamingo">{preview.error}</span>
+                <span className="px-3 text-center text-xs text-destructive">{preview.error}</span>
               )}
             </div>
             {shown && (
-              <p className="mt-1 truncate font-mono text-[11px] text-ink-400">
+              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                 {shown.width}×{shown.height} · {shown.format} · {shown.mips} mip{shown.mips === 1 ? '' : 's'}
               </p>
             )}
@@ -113,12 +113,12 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
                   <button
                     type="button"
                     onClick={() => setTexture(item.index)}
-                    className={`flex h-6 w-full items-center gap-2 rounded px-1.5 text-left text-xs ${
-                      item.index === texture ? 'bg-flamingo/15 text-white' : 'text-ink-200 hover:bg-ink-800'
+                    className={`flex h-6 w-full items-center gap-2 rounded-sm px-1.5 text-left text-xs ${
+                      item.index === texture ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
                     }`}
                   >
                     <span className="truncate">{item.name || `texture ${item.index}`}</span>
-                    <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-400">
+                    <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
                       {item.width}×{item.height}
                     </span>
                   </button>
@@ -135,8 +135,8 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
 function Property({ label, value, mono = false }: { label: string; value: string | undefined; mono?: boolean }) {
   return (
     <>
-      <dt className="text-ink-400">{label}</dt>
-      <dd className={`truncate text-ink-200 ${mono ? 'font-mono' : ''}`} title={value}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={`truncate text-foreground ${mono ? 'font-mono' : ''}`} title={value}>
         {value}
       </dd>
     </>
