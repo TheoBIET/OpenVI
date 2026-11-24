@@ -29,3 +29,8 @@ body,
 body {
   @apply bg-ink-950 font-sans text-[13px] text-ink-200 antialiased select-none;
 }
+
+/* Behind texture previews, so transparent pixels show. */
+.checkerboard {
+  background: repeating-conic-gradient(var(--color-ink-800) 0 25%, var(--color-ink-950) 0 50%) 0 0 / 16px 16px;
+}

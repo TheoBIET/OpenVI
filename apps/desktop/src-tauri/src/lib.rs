@@ -3,6 +3,7 @@
 mod archive;
 mod fs;
 mod index;
+mod resource;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,7 +16,9 @@ pub fn run() {
             archive::open_archive,
             index::index_game,
             index::search_index,
-            index::index_status
+            index::index_status,
+            resource::resource_info,
+            resource::texture_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenVI");

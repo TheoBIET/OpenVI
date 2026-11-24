@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
+import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
@@ -231,8 +232,8 @@ export function App() {
       // A search result opens its archive with the resource selected.
       void navigate(archiveOf(entry.path), entry.path);
     } else if (entry.kind === 'resource') {
+      // The properties panel shows the selected resource.
       setSelected(entry.path);
-      setNotice(`Previews are not available yet: ${entry.name} will open once the viewers ship.`);
     }
   }
 
@@ -319,6 +320,7 @@ export function App() {
               onUp={() => (search ? void travel(-1) : parent && void navigate(parent.path))}
             />
           )}
+          {!opening && selectedEntry?.kind === 'resource' && <PropertiesPanel root={root} entry={selectedEntry} />}
         </div>
       ) : (
         <EmptyState error={error} onOpen={() => void chooseGameFolder()} />

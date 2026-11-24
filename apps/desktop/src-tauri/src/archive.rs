@@ -149,6 +149,7 @@ mod tests {
                 ("DDS Texture", dds.as_str(), offsets[0]),
                 ("Fragment", fixtures::OBJECT_NAME, offsets[3]),
                 ("PNG Image", png.as_str(), offsets[1]),
+                ("Texture Dictionary", fixtures::DICTIONARY_NAME, offsets[4]),
                 ("XML Document", xml.as_str(), offsets[2]),
             ]
         );

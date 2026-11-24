@@ -297,7 +297,7 @@ mod tests {
 
         let first = index_all(&root, &database, &work.join("cache"), Arc::clone(&progress)).unwrap();
         let second = index_all(&root, &database, &work.join("cache"), progress).unwrap();
-        let found = search(&root, &database, "synthetic").unwrap();
+        let found = search(&root, &database, fixtures::OBJECT_NAME).unwrap();
         let status = Index::open(&database).unwrap().status().unwrap();
         std::fs::remove_dir_all(&root).unwrap();
 
