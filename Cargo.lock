@@ -2592,7 +2592,7 @@ dependencies = [
 
 [[package]]
 name = "openvi"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "dunce",
@@ -2607,7 +2607,7 @@ dependencies = [
 
 [[package]]
 name = "openvi-formats"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "flate2",
@@ -2619,7 +2619,7 @@ dependencies = [
 
 [[package]]
 name = "openvi-index"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "openvi-formats",

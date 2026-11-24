@@ -2,6 +2,17 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.3.0 (2026-11-24)
+
+- Vehicles view: the toolbar's Vehicles button shows the vehicle catalog as a sortable table (name, model, make,
+  handling, mass, top speed, gears, configurations, colour), narrowed by the filter box and exported as CSV or JSON.
+  Double-clicking a vehicle searches its model's resources. The archives it needs are scanned once and indexed.
+- The `vehicles` example writes the same catalog as CSV and JSON without the app.
+- Both come from SixNG's decoding of the vehicle tables (`packs.rpf`) and the game text and handling records
+  (`data.rpf`).
+- Scans are cached in SixNG's work layout (`work/index`); the old cache folder moves there once.
+- `pnpm bump <x.y.z>` sets the version everywhere and fails if a file is out of step.
+
 ## 0.2.1 (2026-11-24)
 
 - Opening an archive while another is still being scanned no longer makes the scan panel jump between the two; the
