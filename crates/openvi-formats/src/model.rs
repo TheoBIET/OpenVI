@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
+use serde::Serialize;
 use serde_json::{Value, json};
 use sixng_core::export::{ExportOptions, Workspace, export_many};
 use sixng_core::{classify, vehexport, vehicles};
@@ -28,6 +29,42 @@ fn version(path: &Path) -> String {
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
         .map_or(0, |duration| duration.as_secs());
     format!("{:x}-{mtime:x}", metadata.len())
+}
+
+/// The texture stores (`*.ttpf`) materials take their textures from: `data/ttdb` and each pack's `data/ttdb`.
+pub fn texture_stores(game_root: &Path) -> Vec<PathBuf> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("ttpf")) {
+                out.push(path);
+            }
+        }
+    }
+    let mut stores = Vec::new();
+    walk(&game_root.join("data").join("ttdb"), &mut stores);
+    for pack in std::fs::read_dir(game_root.join("pack"))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        walk(&pack.path().join("data").join("ttdb"), &mut stores);
+    }
+    stores.sort();
+    stores
+}
+
+/// The state of every texture store, as a short folder name: a model exported while a store was missing or still
+/// downloading names its textures as missing, so exports go under this and are redone when a store changes.
+fn stores_version(game_root: &Path) -> String {
+    let state: String = texture_stores(game_root).iter().map(|store| version(store)).collect();
+    let hash = state.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+    });
+    format!("t{hash:016x}")
 }
 
 /// Whether `output` is missing or older than any of `inputs` that exist.
@@ -66,7 +103,9 @@ pub fn model_glb(game_root: &Path, work_dir: &Path, archive_id: &str, offset: u6
         .with_context(|| format!("no resource at {offset:#x} in {archive_id}"))?;
     anyhow::ensure!(is_model(entry), "the resource at {offset:#x} is not a model");
 
-    let out = work_dir.join("models").join(version(&archive.path));
+    let out = work_dir
+        .join("models")
+        .join(format!("{}_{}", version(&archive.path), stores_version(game_root)));
     // An earlier export is reused ("skipped" lists no files); export again only when its files cannot be found.
     for force in [false, true] {
         let items = export_many(&archive, &[entry], &options(&out, force)?, Arc::new(|_, _, _| {}))?;
@@ -96,9 +135,10 @@ pub fn vehicle_glb(
 ) -> Result<PathBuf> {
     let model = model.to_ascii_lowercase();
     let sources = format!(
-        "{}_{}",
+        "{}_{}_{}",
         version(&game_root.join(VEHICLE_MODELS)),
-        version(&game_root.join("packs.rpf"))
+        version(&game_root.join("packs.rpf")),
+        stores_version(game_root)
     );
     let out = work_dir
         .join("vehicles")
@@ -149,9 +189,145 @@ pub fn vehicle_glb(
     Ok(out)
 }
 
+/// One texture slot of a material, as SixNG resolved it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureSlot {
+    /// The slot's name (`diffusetex`...), else its hash.
+    pub slot: String,
+    /// What the texture is guessed to be: colour, normal, data...
+    pub role: Option<String>,
+    /// `ok`, `not in any ttpf store` (its store is missing or incomplete), `embedded in the model`...
+    pub status: String,
+    /// The decoded PNG on disk, when there is one.
+    pub file: Option<PathBuf>,
+    pub width: Option<u64>,
+    pub height: Option<u64>,
+    pub format: Option<String>,
+}
+
+/// One material of an exported model, with its textures.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialReport {
+    pub index: usize,
+    pub shader: String,
+    pub class: Option<String>,
+    pub textures: Vec<TextureSlot>,
+}
+
+/// The materials SixNG described beside the GLB `glb` (`materials.json`), each texture with its status and its PNG
+/// resolved to a path. Empty when the export has no such file.
+pub fn material_report(glb: &Path) -> Result<Vec<MaterialReport>> {
+    let folder = glb.parent().context("the GLB has no folder")?;
+    let path = folder.join("materials.json");
+    if !path.is_file() {
+        return Ok(Vec::new());
+    }
+    let json: Value = serde_json::from_slice(&std::fs::read(&path)?)?;
+    let text = |value: &Value| value.as_str().map(str::to_owned);
+    // Files are relative to the export folder, an ancestor of the model's folder.
+    let resolve = |file: &str| {
+        folder
+            .ancestors()
+            .map(|base| base.join(file))
+            .find(|candidate| candidate.is_file())
+    };
+    Ok(json["materials"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .enumerate()
+        .map(|(position, material)| MaterialReport {
+            index: material["index"].as_u64().map_or(position, |i| i as usize),
+            shader: text(&material["shader"]).unwrap_or_default(),
+            class: text(&material["class"]),
+            textures: material["textures"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(slot, texture)| TextureSlot {
+                    slot: slot.clone(),
+                    role: text(&texture["role"]),
+                    status: text(&texture["status"]).unwrap_or_else(|| "unknown".into()),
+                    file: texture["file"].as_str().and_then(resolve),
+                    width: texture["width"].as_u64(),
+                    height: texture["height"].as_u64(),
+                    format: text(&texture["format"]),
+                })
+                .collect(),
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reports_materials_with_their_texture_files() {
+        let dir = std::env::temp_dir().join(format!("openvi-materials-{}", std::process::id()));
+        let model = dir.join("models").join("common").join("car_10");
+        let textures = dir.join("textures").join("ttpf");
+        std::fs::create_dir_all(&model).unwrap();
+        std::fs::create_dir_all(&textures).unwrap();
+        std::fs::write(textures.join("aa.png"), b"png").unwrap();
+        let glb = model.join("model.glb");
+        std::fs::write(
+            model.join("materials.json"),
+            json!({ "materials": [{
+                "index": 0, "shader": "vehicle_paint", "class": "car_paint",
+                "textures": {
+                    "diffusetex": { "file": "textures/ttpf/aa.png", "role": "colour (sRGB)", "status": "ok", "width": 64 },
+                    "bumptex": { "status": "not in any ttpf store", "role": "normal" }
+                }
+            }]})
+            .to_string(),
+        )
+        .unwrap();
+
+        let report = material_report(&glb);
+        let none = material_report(&dir.join("model.glb"));
+        let file = textures.join("aa.png");
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let report = report.unwrap();
+        assert_eq!(report.len(), 1);
+        assert_eq!(report[0].class.as_deref(), Some("car_paint"));
+        let slots: Vec<_> = report[0]
+            .textures
+            .iter()
+            .map(|t| (t.slot.as_str(), t.status.as_str()))
+            .collect();
+        assert_eq!(slots, [("bumptex", "not in any ttpf store"), ("diffusetex", "ok")]);
+        assert_eq!(report[0].textures[1].file.as_deref(), Some(file.as_path()));
+        assert!(report[0].textures[0].file.is_none());
+        assert!(none.unwrap().is_empty());
+    }
+
+    #[test]
+    fn finds_texture_stores_and_versions_them() {
+        let root = std::env::temp_dir().join(format!("openvi-stores-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("data").join("ttdb").join("vehicles")).unwrap();
+        std::fs::create_dir_all(root.join("pack").join("story000").join("data").join("ttdb")).unwrap();
+        std::fs::write(root.join("data").join("ttdb").join("vehicles").join("v.ttpf"), [0u8; 8]).unwrap();
+        let before = stores_version(&root);
+        std::fs::write(
+            root.join("pack")
+                .join("story000")
+                .join("data")
+                .join("ttdb")
+                .join("s.ttpf"),
+            [0u8; 8],
+        )
+        .unwrap();
+        let stores = texture_stores(&root);
+        let after = stores_version(&root);
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert_eq!(stores.len(), 2);
+        assert_ne!(before, after);
+    }
     use crate::fixtures;
 
     /// A game folder holding the synthetic archive as `common.rpf`, scanned into `<work>/index`.

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, ensure};
 use openvi_formats::ScanPhase;
-use openvi_formats::model::{VEHICLE_MODELS, model_glb, vehicle_glb};
+use openvi_formats::model::{MaterialReport, VEHICLE_MODELS, material_report, model_glb, vehicle_glb};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -62,6 +62,28 @@ fn vehicle(
     vehicle_glb(root, work, name, config, move |phase, done, total| {
         progress(phase, done, total)
     })
+}
+
+/// The materials of the exported GLB `glb`, which must be an export inside `work`.
+fn materials(work: &Path, glb: &Path) -> Result<Vec<MaterialReport>> {
+    let work = dunce::canonicalize(work)?;
+    let glb = dunce::canonicalize(glb)?;
+    ensure!(
+        glb.starts_with(work.join("models")) || glb.starts_with(work.join("vehicles")),
+        "{} is not a model export",
+        glb.display()
+    );
+    material_report(&glb)
+}
+
+/// The materials of an exported model or vehicle, each texture with its status (why one is missing).
+#[tauri::command]
+pub async fn model_materials(app: AppHandle, glb: PathBuf) -> Result<Vec<MaterialReport>, String> {
+    let work = index::work_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || materials(&work, &glb))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| format!("{error:#}"))
 }
 
 /// The GLB file of the model resource at `path`, exported into the work folder on first use.
@@ -125,6 +147,8 @@ mod tests {
         std::fs::remove_dir_all(&root).unwrap();
 
         assert!(texture.unwrap_err().to_string().contains("not a model"));
+        let foreign = materials(&root.join(".work"), &root.join("common.rpf"));
+        assert!(foreign.is_err());
         assert!(outside.is_err() && no_offset.is_err() && no_vehicles.is_err());
     }
 }

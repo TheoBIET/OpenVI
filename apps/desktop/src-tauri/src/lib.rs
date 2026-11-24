@@ -32,6 +32,7 @@ pub fn run() {
             catalog::save_export,
             model::model_preview,
             model::vehicle_preview,
+            model::model_materials,
             export::save_resource,
             export::save_texture,
             export::save_model
