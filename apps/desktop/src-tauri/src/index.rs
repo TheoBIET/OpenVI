@@ -60,10 +60,25 @@ pub struct SearchView {
 
 /// Where scans are cached.
 pub(crate) fn cache_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path()
-        .app_cache_dir()
-        .map(|dir| dir.join("archives"))
-        .map_err(|error| error.to_string())
+    Ok(work_dir(app)?.join("index"))
+}
+
+/// SixNG's work folder: scans in `index/`, catalogs in `catalog/`.
+pub(crate) fn work_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let cache = app.path().app_cache_dir().map_err(|error| error.to_string())?;
+    Ok(adopt_old_scans(&cache))
+}
+
+/// Up to 0.2.1, scans were cached in `<cache>/archives`; they move to `<cache>/work/index` once, so nothing is
+/// scanned again. Returns `<cache>/work`.
+fn adopt_old_scans(cache: &Path) -> PathBuf {
+    let work = cache.join("work");
+    let (old, new) = (cache.join("archives"), work.join("index"));
+    if old.is_dir() && !new.exists() && std::fs::create_dir_all(&work).is_ok() {
+        // On failure the old scans stay where they are and archives are scanned again: no harm done.
+        let _ = std::fs::rename(&old, &new);
+    }
+    work
 }
 
 /// The index database of the game folder `root` (canonical): one per folder, in the app data folder.
@@ -323,6 +338,23 @@ mod tests {
                 .starts_with(&*root.join("common.rpf").to_string_lossy())
         );
         assert_eq!(status.archives, 2);
+    }
+
+    #[test]
+    fn moves_scans_from_the_old_cache_folder_once() {
+        let cache = std::env::temp_dir().join(format!("openvi-cache-move-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&cache);
+        std::fs::create_dir_all(cache.join("archives")).unwrap();
+        std::fs::write(cache.join("archives").join("common.json"), b"{}").unwrap();
+
+        let work = adopt_old_scans(&cache);
+        let again = adopt_old_scans(&cache);
+        let moved = work.join("index").join("common.json").is_file();
+        let old_gone = !cache.join("archives").exists();
+        std::fs::remove_dir_all(&cache).unwrap();
+
+        assert_eq!(work, again);
+        assert!(moved && old_gone);
     }
 
     #[test]
