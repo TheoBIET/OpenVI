@@ -13,7 +13,7 @@ import {
 } from '../lib/catalog';
 import { formatSize } from '../lib/format';
 import { vehiclePreview } from '../lib/model';
-import { ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
+import { listKeys, ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; catalog: VehicleCatalog } | { state: 'failed'; error: string };
 
@@ -195,13 +195,19 @@ export function VehiclesView({
             </button>
           ))}
         </div>
-        <div className="flex-1 overflow-auto">
+        <div
+          tabIndex={0}
+          aria-label="Vehicles list"
+          onKeyDown={listKeys(rows, (row) => row.modelHash, selected, setSelected, onOpen)}
+          className="flex-1 overflow-auto outline-none"
+        >
           {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No vehicle matches.</p>}
           {rows.map((vehicle) => (
             <div
               key={vehicle.modelHash}
               role="row"
               title={vehicle.model ? `Double-click to see ${vehicle.model} in 3D` : vehicle.modelHash}
+              data-row={vehicle.modelHash}
               onClick={() => setSelected(vehicle)}
               onDoubleClick={() => onOpen(vehicle)}
               className={`grid h-6 cursor-default items-center gap-3 px-3 ${

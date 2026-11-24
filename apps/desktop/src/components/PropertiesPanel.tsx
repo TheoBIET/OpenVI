@@ -8,7 +8,18 @@ import { archiveOf } from '../lib/index';
 import { modelPreview } from '../lib/model';
 import { resourceInfo, textPreview, texturePreview } from '../lib/resource';
 import { isViewable, MODEL_TYPES, TEXT_TYPES } from './DocumentView';
-import { ModelPreview, PanelButton, PreviewPane, PreviewSection, Properties, TextSnippet, useSettled } from './preview';
+import {
+  ModelPreview,
+  PanelButton,
+  PENDING,
+  PreviewPane,
+  PreviewSection,
+  Properties,
+  TextSnippet,
+  TextSnippetSkeleton,
+  useSettled,
+} from './preview';
+import { Skeleton } from './skeleton';
 
 /** Revokes an object URL once it is replaced or the pane goes. */
 function useObjectUrl(url: string | null) {
@@ -65,8 +76,9 @@ function FilePreview({ root, entry }: { root: string; entry: Entry }) {
         <Properties rows={[['Size', formatSize(entry.size), true]]} />
       </PreviewSection>
       <PreviewSection>
-        {preview.state === 'loading' && <p className="text-muted-foreground">Reading…</p>}
+        {(preview.state === 'loading' || preview.state === 'idle') && <TextSnippetSkeleton />}
         {preview.state === 'failed' && <p className="text-destructive">{preview.error}</p>}
+        {mime && image.state !== 'ready' && image.state !== 'failed' && <Skeleton className="h-40 w-full" />}
         {preview.state === 'ready' && preview.value.kind === 'text' && <TextSnippet text={preview.value.text} />}
         {preview.state === 'ready' && preview.value.kind === 'binary' && (
           <p className="text-muted-foreground">Binary data: no preview.</p>
@@ -114,6 +126,11 @@ function ResourcePreview({ root, entry }: { root: string; entry: Entry }) {
 
   const archive = entry.location ?? archiveOf(entry.path).split(/[\\/]/).at(-1);
   const info = details.state === 'ready' ? details.value : null;
+  // Rows waiting for the details keep their place; a failure drops them.
+  function later<T>(value: T): T | null | typeof PENDING {
+    if (details.state === 'ready') return value;
+    return details.state === 'failed' ? null : PENDING;
+  }
 
   return (
     <>
@@ -122,16 +139,22 @@ function ResourcePreview({ root, entry }: { root: string; entry: Entry }) {
           <ModelPreview loaded={model} waiting="Exporting the model…" />
         </PreviewSection>
       )}
-      {png.state === 'ready' && (
+      {type === 'PNG Image' && (
         <PreviewSection>
-          <div className="checkerboard grid place-items-center overflow-hidden rounded-sm border border-border">
-            <img src={png.value} alt={entry.name} className="max-h-80 max-w-full object-contain" />
-          </div>
+          {png.state === 'ready' ? (
+            <div className="checkerboard grid place-items-center overflow-hidden rounded-sm border border-border">
+              <img src={png.value} alt={entry.name} className="max-h-80 max-w-full object-contain" />
+            </div>
+          ) : (
+            <Skeleton className="h-40 w-full" />
+          )}
         </PreviewSection>
       )}
-      {text.state === 'ready' && (
+      {TEXT_TYPES.has(type) && (
         <PreviewSection>
-          <TextSnippet text={text.value.text} />
+          {text.state === 'ready' && <TextSnippet text={text.value.text} />}
+          {text.state === 'failed' && <p className="text-destructive">{text.error}</p>}
+          {(text.state === 'loading' || text.state === 'idle') && <TextSnippetSkeleton />}
         </PreviewSection>
       )}
       <PreviewSection>
@@ -140,10 +163,10 @@ function ResourcePreview({ root, entry }: { root: string; entry: Entry }) {
             ['Archive', archive],
             ['Offset', entry.offset === undefined ? null : formatOffset(entry.offset), true],
             ['Size', formatSize(entry.size), true],
-            ['Compressed', info ? formatSize(info.compressedSize) : null, true],
-            ['Streams', info?.streams, true],
-            ['Sub type', info?.subType, true],
-            ['Tag', info?.resourceType, true],
+            ['Compressed', later(info && formatSize(info.compressedSize)), true],
+            ['Streams', later(info?.streams), true],
+            ['Sub type', later(info?.subType), true],
+            ['Tag', later(info?.resourceType), true],
           ]}
         />
         {details.state === 'failed' && <p className="mt-2 text-destructive">{details.error}</p>}
@@ -169,7 +192,7 @@ function ResourcePreview({ root, entry }: { root: string; entry: Entry }) {
             {thumb.state === 'ready' && (
               <img src={thumb.value} alt={shown?.name ?? ''} className="max-h-full max-w-full object-contain" />
             )}
-            {thumb.state === 'loading' && <span className="text-muted-foreground">Decoding…</span>}
+            {thumb.state !== 'ready' && thumb.state !== 'failed' && <Skeleton className="h-full w-full rounded-none" />}
             {thumb.state === 'failed' && <span className="px-3 text-center text-destructive">{thumb.error}</span>}
           </div>
           {shown && (

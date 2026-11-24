@@ -9,6 +9,7 @@ import { canPrettify, languageOf, prettify } from '../lib/prettify';
 import { textPreview } from '../lib/resource';
 import { CodeView } from './CodeView';
 import { ModelView } from './ModelView';
+import { CodeSkeleton } from './skeleton';
 
 type Content =
   | { type: 'text'; text: string; truncated: boolean }
@@ -132,7 +133,9 @@ export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
         )}
       </div>
       {loaded.state === 'loading' && (
-        <p className="grid flex-1 place-items-center text-xs text-muted-foreground">Reading…</p>
+        <div className="relative min-h-0 flex-1">
+          <CodeSkeleton />
+        </div>
       )}
       {loaded.state === 'failed' && (
         <p className="grid flex-1 place-items-center px-10 text-center text-xs text-destructive">{loaded.error}</p>

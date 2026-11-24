@@ -1,7 +1,8 @@
 import { Maximize2 } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 
-import type { SceneHandle } from '../lib/scene';
+import { BusyOverlay, Skeleton, SkeletonLines, StageSkeleton } from './skeleton';
+import { useBufferedScene } from './useBufferedScene';
 
 /**
  * The right-hand preview of whatever is selected: title, what it is, an Open button (the same as a double-click)
@@ -55,8 +56,15 @@ export function PreviewSection({ title, children }: { title?: string; children: 
   );
 }
 
-/** Label and value rows. */
-export function Properties({ rows }: { rows: [string, string | number | null | undefined, boolean?][] }) {
+/** A value still loading: its row keeps its place, with a placeholder, so the pane does not grow when it arrives. */
+export const PENDING = Symbol('pending');
+
+/** Label and value rows; a row whose value is missing is left out, one still {@link PENDING} keeps its place. */
+export function Properties({
+  rows,
+}: {
+  rows: [string, string | number | null | undefined | typeof PENDING, boolean?][];
+}) {
   return (
     <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
       {rows
@@ -64,9 +72,15 @@ export function Properties({ rows }: { rows: [string, string | number | null | u
         .map(([label, value, mono]) => (
           <div key={label} className="contents">
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className={`truncate text-foreground ${mono ? 'font-mono' : ''}`} title={String(value)}>
-              {value}
-            </dd>
+            {value === PENDING ? (
+              <dd className="flex items-center">
+                <Skeleton className="h-3 w-2/3" />
+              </dd>
+            ) : (
+              <dd className={`truncate text-foreground ${mono ? 'font-mono' : ''}`} title={String(value)}>
+                {value}
+              </dd>
+            )}
           </div>
         ))}
     </dl>
@@ -95,39 +109,34 @@ export function TextSnippet({ text, lines = 40 }: { text: string; lines?: number
   );
 }
 
-/** A GLB on disk, turning slowly in a square: the 3D preview of the pane. */
-export function ModelThumb({ path }: { path: string }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<'loading' | 'ready' | string>('loading');
+/** The space a {@link TextSnippet} takes, while its text loads. */
+export function TextSnippetSkeleton() {
+  return (
+    <div className="h-40 overflow-hidden rounded-sm border border-border bg-background p-2">
+      <SkeletonLines count={9} />
+    </div>
+  );
+}
 
-  useEffect(() => {
-    let disposed = false;
-    let handle: SceneHandle | null = null;
-    setState('loading');
-    void import('../lib/scene').then(({ mountScene }) => {
-      if (disposed || !host.current) return;
-      handle = mountScene(
-        host.current,
-        path,
-        () => setState('ready'),
-        (error) => setState(`Cannot show this model: ${String(error)}`),
-        { autoRotate: true },
-      );
-    });
-    return () => {
-      disposed = true;
-      handle?.dispose();
-    };
-  }, [path]);
+/**
+ * A GLB on disk, turning slowly in a square: the 3D preview of the pane. A new `path` loads under the one on screen,
+ * which stays (blurred) until it fades in; `busy` says the caller is preparing the next one.
+ */
+export function ModelThumb({ path, busy = null }: { path: string; busy?: string | null }) {
+  const stage = useRef<HTMLDivElement>(null);
+  const { stats, error, loading } = useBufferedScene(stage, path, { autoRotate: true });
 
   return (
     <div className="relative aspect-square overflow-hidden rounded-sm border border-border bg-background">
-      <div ref={host} className="absolute inset-0" />
-      {state === 'loading' && (
-        <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">Loading model…</p>
+      <div ref={stage} className="absolute inset-0" />
+      {!stats && !error && (
+        <div className="absolute inset-0 flex">
+          <StageSkeleton label={busy ?? 'Loading model…'} />
+        </div>
       )}
-      {state !== 'loading' && state !== 'ready' && (
-        <p className="absolute inset-0 grid place-items-center px-3 text-center text-xs text-destructive">{state}</p>
+      {stats && (loading || busy) && <BusyOverlay label={busy ?? 'Loading model…'} />}
+      {!stats && error && (
+        <p className="absolute inset-0 grid place-items-center px-3 text-center text-xs text-destructive">{error}</p>
       )}
     </div>
   );
@@ -173,10 +182,50 @@ export function useSettled<T>(key: string, load: (() => Promise<T>) | null, dela
   return loaded;
 }
 
-/** Shows a {@link Loaded} model: the turning thumbnail, a loading line, or the error. */
+/**
+ * Shows a {@link Loaded} model: the turning thumbnail, or its square placeholder while the first one is exported.
+ * While the next selection's model is exported, the previous one stays, blurred, under `waiting`.
+ */
 export function ModelPreview({ loaded, waiting }: { loaded: Loaded<string>; waiting: string }) {
-  if (loaded.state === 'ready') return <ModelThumb path={loaded.value} />;
-  if (loaded.state === 'failed') return <p className="text-destructive">{loaded.error}</p>;
-  if (loaded.state === 'loading') return <p className="text-muted-foreground">{waiting}</p>;
-  return null;
+  const [last, setLast] = useState<string | null>(null);
+  useEffect(() => {
+    if (loaded.state === 'ready') setLast(loaded.value);
+  }, [loaded]);
+
+  if (loaded.state === 'failed') {
+    return (
+      <div className="grid aspect-square place-items-center rounded-sm border border-border px-3 text-center text-destructive">
+        {loaded.error}
+      </div>
+    );
+  }
+  const path = loaded.state === 'ready' ? loaded.value : last;
+  if (path) return <ModelThumb path={path} busy={loaded.state === 'loading' ? waiting : null} />;
+  if (loaded.state === 'idle') return null;
+  return <StageSkeleton square label={waiting} />;
+}
+
+/**
+ * Arrow keys move the selection through `rows` (the preview pane follows, and the row scrolls into view), Enter opens
+ * it, as in the explorer's list. Rows carry `data-row={key}` for the scrolling.
+ */
+export function listKeys<T>(
+  rows: T[],
+  key: (row: T) => string,
+  selected: T | null,
+  select: (row: T) => void,
+  open: (row: T) => void,
+) {
+  return (event: KeyboardEvent<HTMLElement>) => {
+    const index = selected ? rows.findIndex((row) => key(row) === key(selected)) : -1;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = rows[Math.min(Math.max(index + (event.key === 'ArrowDown' ? 1 : -1), 0), rows.length - 1)];
+      if (!next) return;
+      select(next);
+      event.currentTarget.querySelector(`[data-row="${CSS.escape(key(next))}"]`)?.scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter' && selected) {
+      open(selected);
+    }
+  };
 }

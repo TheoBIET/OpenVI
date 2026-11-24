@@ -1,6 +1,8 @@
 import type * as Monaco from 'monaco-editor';
 import { useEffect, useRef, useState } from 'react';
 
+import { CodeSkeleton } from './skeleton';
+
 type MonacoApi = typeof Monaco;
 
 /** A read-only Monaco editor: highlighting, line numbers, folding, minimap, Ctrl+F. */
@@ -58,9 +60,7 @@ export function CodeView({ value, language, wrap }: { value: string; language: s
   return (
     <div className="relative min-h-0 flex-1">
       <div ref={host} className="absolute inset-0" />
-      {!ready && (
-        <p className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">Loading editor…</p>
-      )}
+      {!ready && <CodeSkeleton />}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
 import { type Character, characterList, characterPreview } from '../lib/characters';
 import { formatSize } from '../lib/format';
-import { ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
+import { listKeys, ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; characters: Character[] } | { state: 'failed'; error: string };
 
@@ -110,13 +110,19 @@ export function CharactersView({
           <span className="text-right">Parts</span>
           <span className="text-right">Worn by default</span>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div
+          tabIndex={0}
+          aria-label="Characters list"
+          onKeyDown={listKeys(rows, (row) => row.name, selected, setSelected, onOpen)}
+          className="flex-1 overflow-auto outline-none"
+        >
           {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No character matches.</p>}
           {rows.map((character) => (
             <div
               key={character.name}
               role="row"
               title={`Double-click to see ${character.name} in 3D`}
+              data-row={character.name}
               onClick={() => setSelected(character)}
               onDoubleClick={() => onOpen(character)}
               className={`grid h-6 cursor-default items-center gap-3 px-3 ${
