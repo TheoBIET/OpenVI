@@ -2,6 +2,14 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.16.0 (2026-11-25)
+
+- Weapons section: every weapon model of `data.rpf` and `packs.rpf` (filter by name, class or make; class from the
+  name: assault rifle, pistol, shotgun…) with its parts and slots. A weapon is built in 3D from its parts, each
+  mounted on its attach point; the Parts panel fits one part per slot (barrel, stock, magazine, sight… or none).
+  Which variant the game fits by default is not decoded: the lowest-numbered one is shown first.
+- Update notes: an installed copy shows this changelog's entry beside "Update to x.y.z".
+
 ## 0.15.0 (2026-11-25)
 
 - Updates: OpenVI checks GitHub for a newer version on start and every six hours. The status bar then offers
