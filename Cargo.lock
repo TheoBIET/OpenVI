@@ -2613,6 +2613,7 @@ dependencies = [
  "flate2",
  "image",
  "serde",
+ "serde_json",
  "sixng-core",
 ]
 

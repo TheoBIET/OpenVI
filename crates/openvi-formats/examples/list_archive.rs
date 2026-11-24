@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let cache = args
         .next()
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir().join("openvi-cache"));
+        .unwrap_or_else(|| std::env::temp_dir().join("openvi-work").join("index"));
     let id = archive
         .file_name()
         .context("the archive path has no file name")?
