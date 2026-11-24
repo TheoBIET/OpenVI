@@ -68,7 +68,7 @@ pub(crate) fn stores_version(game_root: &Path) -> String {
 }
 
 /// Whether `output` is missing or older than any of `inputs` that exist.
-fn stale(output: &Path, inputs: &[PathBuf]) -> bool {
+pub(crate) fn stale(output: &Path, inputs: &[PathBuf]) -> bool {
     let modified = |path: &Path| std::fs::metadata(path).and_then(|m| m.modified()).ok();
     let Some(built) = modified(output) else { return true };
     inputs

@@ -4,6 +4,7 @@
 //! Everything read is unencrypted. An RPF9 archive's table of contents is encrypted and is skipped untouched; its
 //! data area is plain zlib, so resources are found by carving those streams and sniffing their first bytes.
 
+pub mod animations;
 pub mod catalog;
 pub mod characters;
 #[cfg(any(test, feature = "fixtures"))]

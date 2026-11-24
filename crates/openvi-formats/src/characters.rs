@@ -6,9 +6,10 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, ensure};
 use serde::Serialize;
 use sixng_core::export::Workspace;
-use sixng_core::outfit;
 use sixng_core::scan::ArchiveIndex;
+use sixng_core::{anim, outfit};
 
+use crate::animations::{ANIMATIONS, scan_animations};
 use crate::model::{options, stores_version, version};
 use crate::{ScanPhase, scan_archive};
 
@@ -101,9 +102,25 @@ pub fn character_parts(game_root: &Path, work_dir: &Path, name: &str) -> Result<
     Ok(parts)
 }
 
+/// An animation clip to play on a character: `(dictionary name, clip name)`.
+pub type ClipChoice<'a> = (&'a str, &'a str);
+
 /// Character `name` assembled as one rigged GLB, wearing `parts` (offsets from [`character_parts`]) or, when `None`,
-/// its default look. Kept in `<work>/characters` and reused until `packs.rpf` or a texture store changes.
-pub fn character_glb(game_root: &Path, work_dir: &Path, name: &str, parts: Option<&[u64]>) -> Result<PathBuf> {
+/// its default look; with `clip`, the clip as the GLB's animation, and with `skeleton_only` only the skeleton (no
+/// meshes) to show the motion alone. Kept in `<work>/characters` and reused until `packs.rpf`, `anim.rpf` or a
+/// texture store changes.
+pub fn character_glb(
+    game_root: &Path,
+    work_dir: &Path,
+    name: &str,
+    parts: Option<&[u64]>,
+    clip: Option<ClipChoice>,
+    skeleton_only: bool,
+) -> Result<PathBuf> {
+    ensure!(
+        !skeleton_only || clip.is_some(),
+        "a skeleton alone needs a clip to show"
+    );
     let name = name.to_ascii_lowercase();
     let (_, index) = parts_index(game_root, work_dir, |_, _, _| {})?;
     let available = options_of(&index, &name);
@@ -125,14 +142,24 @@ pub fn character_glb(game_root: &Path, work_dir: &Path, name: &str, parts: Optio
         })
         .collect::<Result<_>>()?;
 
-    // One folder per look: the parts' offsets name it.
-    let look = chosen.iter().fold(0xcbf2_9ce4_8422_2325_u64, |hash, offset| {
-        (hash ^ offset).wrapping_mul(0x0100_0000_01b3)
-    });
+    // One folder per look and clip: the parts' offsets and the clip name it.
+    let fnv = |hash: u64, value: u64| (hash ^ value).wrapping_mul(0x0100_0000_01b3);
+    let mut look = chosen
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325_u64, |hash, offset| fnv(hash, *offset));
+    if let Some((dictionary, name)) = clip {
+        let text = format!("{dictionary}/{name}/{skeleton_only}");
+        look = text.bytes().fold(look, |hash, byte| fnv(hash, u64::from(byte)));
+    }
     let sources = format!(
-        "{}_{}",
+        "{}_{}_{}",
         version(&game_root.join(CHARACTER_PARTS)),
-        stores_version(game_root)
+        stores_version(game_root),
+        if clip.is_some() {
+            version(&game_root.join(ANIMATIONS))
+        } else {
+            "still".into()
+        }
     );
     let out = work_dir
         .join("characters")
@@ -144,14 +171,30 @@ pub fn character_glb(game_root: &Path, work_dir: &Path, name: &str, parts: Optio
     }
     let archive = Workspace::new(game_root, work_dir).resolve(CHARACTER_PARTS)?;
     let folder = out.parent().context("character export path has no folder")?;
+    let dictionary = match clip {
+        Some((dictionary, _)) => {
+            scan_animations(game_root, work_dir, |_, _, _| {})?;
+            Some(anim::load_dictionary(game_root, work_dir, dictionary)?.1)
+        }
+        None => None,
+    };
+    let clips: Vec<(&anim::ClipDictionary, &anim::Clip)> = match (&dictionary, clip) {
+        (Some(loaded), Some((_, wanted))) => {
+            let found = loaded
+                .clip(wanted)
+                .with_context(|| format!("no clip {wanted} in {}", loaded.name))?;
+            vec![(loaded, found)]
+        }
+        _ => Vec::new(),
+    };
     outfit::export_outfit(
         &archive,
         &selection,
         &name,
         &out,
         &options(folder, true)?,
-        &[],
-        false,
+        &clips,
+        skeleton_only,
         false,
     )?;
     ensure!(out.is_file(), "SixNG exported no GLB for {name}");
@@ -177,7 +220,7 @@ mod tests {
         let root = game("list");
         let list = character_list(&root, &root.join("work"), |_, _, _| {});
         let parts = character_parts(&root, &root.join("work"), "player_story000_00");
-        let glb = character_glb(&root, &root.join("work"), "player_story000_00", None);
+        let glb = character_glb(&root, &root.join("work"), "player_story000_00", None, None, false);
         std::fs::remove_dir_all(&root).unwrap();
 
         assert!(list.unwrap().is_empty());
