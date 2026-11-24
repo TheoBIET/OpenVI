@@ -95,7 +95,7 @@ fn is_model(entry: &sixng_core::scan::Entry) -> bool {
 pub fn model_glb(game_root: &Path, work_dir: &Path, archive_id: &str, offset: u64) -> Result<PathBuf> {
     let workspace = Workspace::new(game_root, work_dir);
     let archive = workspace.resolve(archive_id)?;
-    let index = workspace.load_index(&archive)?;
+    let index = crate::index_cache::load(&workspace.index_dir(), &archive.id)?;
     let entry = index
         .entries
         .iter()
@@ -140,11 +140,12 @@ pub fn vehicle_glb(
         version(&game_root.join("packs.rpf")),
         stores_version(game_root)
     );
+    // All configurations of a vehicle share one folder, so the textures decoded for one are reused by the next.
     let out = work_dir
         .join("vehicles")
         .join(sources)
-        .join(format!("{model}_{config}"))
-        .join(format!("{model}.glb"));
+        .join(&model)
+        .join(format!("{model}_{config}.glb"));
     if out.is_file() {
         return Ok(out);
     }
@@ -172,19 +173,25 @@ pub fn vehicle_glb(
     anyhow::ensure!(models.is_file(), "{} has no {VEHICLE_MODELS}", game_root.display());
     scan_archive(&models, VEHICLE_MODELS, &workspace.index_dir(), progress)?;
     let archive = workspace.resolve(VEHICLE_MODELS)?;
-    let index = workspace.load_index(&archive)?;
+    let index = crate::index_cache::load(&workspace.index_dir(), VEHICLE_MODELS)?;
     let parent = out.parent().context("vehicle export path has no folder")?;
-    vehexport::export_vehicle(
-        &archive,
-        &index,
-        vehicle,
-        config,
-        &[],
-        &[],
-        true,
-        &out,
-        &options(parent, true)?,
-    )?;
+    // Without force, textures already decoded are kept; force only if that left no GLB.
+    for force in [false, true] {
+        vehexport::export_vehicle(
+            &archive,
+            &index,
+            vehicle,
+            config,
+            &[],
+            &[],
+            true,
+            &out,
+            &options(parent, force)?,
+        )?;
+        if out.is_file() {
+            break;
+        }
+    }
     anyhow::ensure!(out.is_file(), "SixNG exported no GLB for {model}");
     Ok(out)
 }

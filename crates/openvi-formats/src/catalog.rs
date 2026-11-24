@@ -174,7 +174,7 @@ pub fn vehicle_catalog(
 
     let handling_json = match workspace.resolve("data.rpf") {
         Ok(data) => {
-            let index = workspace.load_index(&data)?;
+            let index = crate::index_cache::load(&workspace.index_dir(), &data.id)?;
             let records: Vec<_> = index.entries.iter().filter(|e| e.kind == classify::Kind::Pso).collect();
             pso::export_handling(&data, &records, &vehicles::model_names(&workspace), &out)?;
             Some(out.join("pso").join("handling.json"))

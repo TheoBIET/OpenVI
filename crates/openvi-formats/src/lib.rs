@@ -9,6 +9,7 @@ pub mod catalog;
 pub mod characters;
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;
+pub mod index_cache;
 pub mod model;
 
 use std::path::Path;
@@ -165,6 +166,13 @@ pub fn scan_archive(
     cache_dir: &Path,
     progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
 ) -> Result<ArchiveScan> {
+    // Already scanned as the archive is now: the index in memory, without parsing its file again.
+    if let Some(index) = current_scan(path, archive_id, cache_dir) {
+        return Ok(ArchiveScan {
+            entries: index.entries.iter().cloned().map(ArchiveEntry::from).collect(),
+            coverage: index.stats.coverage,
+        });
+    }
     let progress = Arc::new(progress);
     let carving = Arc::clone(&progress);
     let mut index = scan::build_index(
@@ -189,6 +197,18 @@ pub fn scan_archive(
         entries,
         coverage: index.stats.coverage,
     })
+}
+
+/// The cached scan of `archive_id`, when it is complete (names included) and matches the archive on disk.
+fn current_scan(path: &Path, archive_id: &str, cache_dir: &Path) -> Option<std::sync::Arc<scan::ArchiveIndex>> {
+    let metadata = std::fs::metadata(path).ok()?;
+    let mtime = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |duration| duration.as_secs());
+    let index = index_cache::load(cache_dir, archive_id).ok()?;
+    (index.names_done && index.size == metadata.len() && index.mtime == mtime).then_some(index)
 }
 
 impl From<scan::Entry> for ArchiveEntry {
@@ -234,12 +254,12 @@ pub struct ResourceDetails {
 
 /// The cached scan entry of the resource at `offset`. The archive must have been scanned with [`scan_archive`].
 fn cached_entry(archive_id: &str, cache_dir: &Path, offset: u64) -> Result<scan::Entry> {
-    let index = scan::load_index(&scan::index_path(cache_dir, archive_id))
-        .with_context(|| format!("{archive_id} has not been scanned yet"))?;
+    let index = index_cache::load(cache_dir, archive_id)?;
     index
         .entries
-        .into_iter()
+        .iter()
         .find(|entry| entry.off == offset)
+        .cloned()
         .with_context(|| format!("no resource at {offset:#x} in {archive_id}"))
 }
 

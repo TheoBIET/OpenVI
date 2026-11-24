@@ -48,12 +48,12 @@ fn parts_index(
     game_root: &Path,
     work_dir: &Path,
     progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
-) -> Result<(Workspace, ArchiveIndex)> {
+) -> Result<(Workspace, std::sync::Arc<ArchiveIndex>)> {
     let path = game_root.join(CHARACTER_PARTS);
     ensure!(path.is_file(), "{} has no {CHARACTER_PARTS}", game_root.display());
     let workspace = Workspace::new(game_root, work_dir);
     scan_archive(&path, CHARACTER_PARTS, &workspace.index_dir(), progress)?;
-    let index = workspace.load_index(&workspace.resolve(CHARACTER_PARTS)?)?;
+    let index = crate::index_cache::load(&workspace.index_dir(), CHARACTER_PARTS)?;
     Ok((workspace, index))
 }
 
@@ -161,11 +161,13 @@ pub fn character_glb(
             "still".into()
         }
     );
+    // Every look and clip of a character shares one folder, so the textures decoded for one are reused by the next
+    // (exports do not force them again).
     let out = work_dir
         .join("characters")
         .join(sources)
-        .join(format!("{name}_{look:016x}"))
-        .join(format!("{name}.glb"));
+        .join(&name)
+        .join(format!("{look:016x}.glb"));
     if out.is_file() {
         return Ok(out);
     }
@@ -187,16 +189,22 @@ pub fn character_glb(
         }
         _ => Vec::new(),
     };
-    outfit::export_outfit(
-        &archive,
-        &selection,
-        &name,
-        &out,
-        &options(folder, true)?,
-        &clips,
-        skeleton_only,
-        false,
-    )?;
+    // Without force, textures already decoded are kept; force only if that left no GLB.
+    for force in [false, true] {
+        outfit::export_outfit(
+            &archive,
+            &selection,
+            &name,
+            &out,
+            &options(folder, force)?,
+            &clips,
+            skeleton_only,
+            false,
+        )?;
+        if out.is_file() {
+            break;
+        }
+    }
     ensure!(out.is_file(), "SixNG exported no GLB for {name}");
     Ok(out)
 }
