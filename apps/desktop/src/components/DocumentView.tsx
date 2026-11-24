@@ -18,20 +18,21 @@ type Content =
 
 type Loaded = { state: 'loading' } | { state: 'ready'; content: Content } | { state: 'failed'; error: string };
 
-const textResources = new Set(['XML Document', 'Text']);
-const modelResources = new Set(['Drawable', 'Fragment', 'Drawable Dictionary']);
+/** Resource types the document view shows as text, and as 3D models. */
+export const TEXT_TYPES: ReadonlySet<string> = new Set(['XML Document', 'Text']);
+export const MODEL_TYPES: ReadonlySet<string> = new Set(['Drawable', 'Fragment', 'Drawable Dictionary']);
 
 /** Whether {@link DocumentView} can open `entry`. */
 export function isViewable(entry: Entry): boolean {
   if (entry.kind === 'file') return true;
   const type = entry.typeName ?? '';
-  return entry.kind === 'resource' && (textResources.has(type) || modelResources.has(type) || type === 'PNG Image');
+  return entry.kind === 'resource' && (TEXT_TYPES.has(type) || MODEL_TYPES.has(type) || type === 'PNG Image');
 }
 
 async function load(root: string, entry: Entry): Promise<Content> {
   if (entry.kind === 'resource') {
     if (entry.typeName === 'PNG Image') return { type: 'image', url: await resourceImage(root, entry.path) };
-    if (modelResources.has(entry.typeName ?? '')) return { type: 'model', path: await modelPreview(root, entry.path) };
+    if (MODEL_TYPES.has(entry.typeName ?? '')) return { type: 'model', path: await modelPreview(root, entry.path) };
     const preview = await textPreview(root, entry.path);
     return { type: 'text', ...preview };
   }

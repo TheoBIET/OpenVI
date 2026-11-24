@@ -1,21 +1,109 @@
 import { useEffect, useState } from 'react';
 
+import { fileImage, filePreview, resourceImage } from '../lib/document';
 import { saveResource, saveTexture } from '../lib/export';
-import { formatOffset, formatSize } from '../lib/format';
+import { formatOffset, formatSize, typeLabel } from '../lib/format';
 import type { Entry } from '../lib/fs';
 import { archiveOf } from '../lib/index';
-import { type ResourceDetails, resourceInfo, texturePreview } from '../lib/resource';
-import { isViewable } from './DocumentView';
+import { modelPreview } from '../lib/model';
+import { resourceInfo, textPreview, texturePreview } from '../lib/resource';
+import { isViewable, MODEL_TYPES, TEXT_TYPES } from './DocumentView';
+import { ModelPreview, PanelButton, PreviewPane, PreviewSection, Properties, TextSnippet, useSettled } from './preview';
 
-type Loaded<T> = { state: 'loading' } | { state: 'ready'; value: T } | { state: 'failed'; error: string };
+/** Revokes an object URL once it is replaced or the pane goes. */
+function useObjectUrl(url: string | null) {
+  useEffect(
+    () => () => {
+      if (url !== null) URL.revokeObjectURL(url);
+    },
+    [url],
+  );
+}
 
-/** Details of the selected resource, with a preview of the textures it holds. */
-export function PropertiesPanel({ root, entry }: { root: string; entry: Entry }) {
-  const [details, setDetails] = useState<Loaded<ResourceDetails>>({ state: 'loading' });
+/**
+ * The preview of the selected entry: a folder or an archive (what it holds), a loose file (text or image), a resource
+ * (its details, textures, text, image or 3D model). `onOpen` opens it on its own, like a double-click.
+ */
+export function PropertiesPanel({
+  root,
+  entry,
+  onOpen,
+}: {
+  root: string;
+  entry: Entry;
+  onOpen: (entry: Entry) => void;
+}) {
+  const open = entry.kind === 'folder' || entry.kind === 'archive' || isViewable(entry) ? () => onOpen(entry) : null;
+  return (
+    <PreviewPane title={entry.name} subtitle={typeLabel(entry)} onOpen={open}>
+      {entry.kind === 'folder' && (
+        <PreviewSection>
+          <Properties rows={[['Items', entry.items ?? '?']]} />
+        </PreviewSection>
+      )}
+      {entry.kind === 'archive' && (
+        <PreviewSection>
+          <Properties rows={[['Size', formatSize(entry.size), true]]} />
+          <p className="mt-2 text-muted-foreground">Open it to list its resources; the first opening scans it.</p>
+        </PreviewSection>
+      )}
+      {entry.kind === 'file' && <FilePreview root={root} entry={entry} />}
+      {entry.kind === 'resource' && <ResourcePreview root={root} entry={entry} />}
+    </PreviewPane>
+  );
+}
+
+function FilePreview({ root, entry }: { root: string; entry: Entry }) {
+  const preview = useSettled(entry.path, () => filePreview(root, entry.path), 150);
+  const mime = preview.state === 'ready' && preview.value.kind === 'image' ? preview.value.mime : null;
+  const image = useSettled(`${entry.path}:${mime ?? ''}`, mime ? () => fileImage(root, entry.path, mime) : null, 0);
+  useObjectUrl(image.state === 'ready' ? image.value : null);
+
+  return (
+    <>
+      <PreviewSection>
+        <Properties rows={[['Size', formatSize(entry.size), true]]} />
+      </PreviewSection>
+      <PreviewSection>
+        {preview.state === 'loading' && <p className="text-muted-foreground">Reading…</p>}
+        {preview.state === 'failed' && <p className="text-destructive">{preview.error}</p>}
+        {preview.state === 'ready' && preview.value.kind === 'text' && <TextSnippet text={preview.value.text} />}
+        {preview.state === 'ready' && preview.value.kind === 'binary' && (
+          <p className="text-muted-foreground">Binary data: no preview.</p>
+        )}
+        {image.state === 'ready' && (
+          <div className="checkerboard grid place-items-center overflow-hidden rounded-sm border border-border">
+            <img src={image.value} alt={entry.name} className="max-h-80 max-w-full object-contain" />
+          </div>
+        )}
+      </PreviewSection>
+    </>
+  );
+}
+
+function ResourcePreview({ root, entry }: { root: string; entry: Entry }) {
+  const type = entry.typeName ?? '';
+  // Loading inflates the whole resource (models run to tens of MB): useSettled waits for the selection to settle.
+  const details = useSettled(entry.path, () => resourceInfo(root, entry.path), 150);
+  const text = useSettled(entry.path, TEXT_TYPES.has(type) ? () => textPreview(root, entry.path) : null);
+  const model = useSettled(entry.path, MODEL_TYPES.has(type) ? () => modelPreview(root, entry.path) : null, 400);
+  const png = useSettled(entry.path, type === 'PNG Image' ? () => resourceImage(root, entry.path) : null);
+  useObjectUrl(png.state === 'ready' ? png.value : null);
+
   const [texture, setTexture] = useState(0);
-  const [preview, setPreview] = useState<Loaded<string>>({ state: 'loading' });
-  /** Where the last export went, or why it failed. */
   const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => {
+    setTexture(0);
+    setSaved(null);
+  }, [entry.path]);
+  const textures = details.state === 'ready' ? details.value.textures : [];
+  const shown = textures[texture];
+  const thumb = useSettled(
+    `${entry.path}:${shown?.index ?? -1}`,
+    shown ? () => texturePreview(root, entry.path, shown.index) : null,
+    0,
+  );
+  useObjectUrl(thumb.state === 'ready' ? thumb.value : null);
 
   function run(save: () => Promise<string | null>) {
     save().then(
@@ -24,92 +112,46 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
     );
   }
 
-  useEffect(() => {
-    let current = true;
-    setDetails({ state: 'loading' });
-    setTexture(0);
-    setSaved(null);
-    // Loading inflates the whole resource (models run to tens of MB): wait until the selection settles, so
-    // walking the list with the arrow keys does not load every row on the way.
-    const timer = setTimeout(() => {
-      resourceInfo(root, entry.path).then(
-        (value) => current && setDetails({ state: 'ready', value }),
-        (error: unknown) => current && setDetails({ state: 'failed', error: String(error) }),
-      );
-    }, 150);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [root, entry.path]);
-
-  const textures = details.state === 'ready' ? details.value.textures : [];
-  const hasTextures = textures.length > 0;
-
-  useEffect(() => {
-    if (!hasTextures) return;
-    let current = true;
-    let url: string | null = null;
-    setPreview({ state: 'loading' });
-    texturePreview(root, entry.path, texture).then(
-      (value) => {
-        url = value;
-        if (current) setPreview({ state: 'ready', value });
-        else URL.revokeObjectURL(value);
-      },
-      (error: unknown) => current && setPreview({ state: 'failed', error: String(error) }),
-    );
-    return () => {
-      current = false;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [root, entry.path, texture, hasTextures]);
-
-  const shown = textures[texture];
   const archive = entry.location ?? archiveOf(entry.path).split(/[\\/]/).at(-1);
+  const info = details.state === 'ready' ? details.value : null;
 
   return (
-    <aside
-      aria-label="Properties"
-      className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-border bg-card"
-    >
-      <header className="border-b border-border px-3 py-2">
-        <h2 className="truncate font-medium text-foreground" title={entry.name}>
-          {entry.name}
-        </h2>
-        <p className="text-xs text-muted-foreground">{entry.typeName}</p>
-      </header>
-      <div className="flex-1 overflow-auto">
-        <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-3 py-2 text-xs">
-          <Property label="Archive" value={archive} />
-          <Property label="Offset" value={entry.offset === undefined ? '' : formatOffset(entry.offset)} mono />
-          <Property label="Size" value={formatSize(entry.size)} mono />
-          {details.state === 'ready' && (
-            <>
-              <Property label="Compressed" value={formatSize(details.value.compressedSize)} mono />
-              <Property label="Streams" value={String(details.value.streams)} mono />
-              <Property label="Sub type" value={details.value.subType || '–'} mono />
-              <Property label="Tag" value={details.value.resourceType ?? '–'} mono />
-            </>
-          )}
-        </dl>
-        {details.state === 'failed' && <p className="px-3 py-2 text-xs text-destructive">{details.error}</p>}
-        {isViewable(entry) && (
-          <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            Double-click or press Enter to open it.
-          </p>
-        )}
-        <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs">
+    <>
+      {MODEL_TYPES.has(type) && (
+        <PreviewSection>
+          <ModelPreview loaded={model} waiting="Exporting the model…" />
+        </PreviewSection>
+      )}
+      {png.state === 'ready' && (
+        <PreviewSection>
+          <div className="checkerboard grid place-items-center overflow-hidden rounded-sm border border-border">
+            <img src={png.value} alt={entry.name} className="max-h-80 max-w-full object-contain" />
+          </div>
+        </PreviewSection>
+      )}
+      {text.state === 'ready' && (
+        <PreviewSection>
+          <TextSnippet text={text.value.text} />
+        </PreviewSection>
+      )}
+      <PreviewSection>
+        <Properties
+          rows={[
+            ['Archive', archive],
+            ['Offset', entry.offset === undefined ? null : formatOffset(entry.offset), true],
+            ['Size', formatSize(entry.size), true],
+            ['Compressed', info ? formatSize(info.compressedSize) : null, true],
+            ['Streams', info?.streams, true],
+            ['Sub type', info?.subType, true],
+            ['Tag', info?.resourceType, true],
+          ]}
+        />
+        {details.state === 'failed' && <p className="mt-2 text-destructive">{details.error}</p>}
+        <div className="mt-2 flex items-center gap-2">
           <PanelButton
             label="Save raw…"
             onClick={() =>
-              run(() =>
-                saveResource(
-                  root,
-                  entry.path,
-                  details.state === 'ready' ? `${entry.name}.${details.value.extension}` : entry.name,
-                ),
-              )
+              run(() => saveResource(root, entry.path, info ? `${entry.name}.${info.extension}` : entry.name))
             }
           />
           {shown && (
@@ -119,70 +161,42 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
             />
           )}
         </div>
-        {saved && <p className="px-3 pb-2 text-xs break-all text-muted-foreground">{saved}</p>}
-        {hasTextures && (
-          <section aria-label="Textures" className="border-t border-border px-3 py-2">
-            <h3 className="mb-2 font-title text-xs text-accent-solid">
-              Textures <span className="text-muted-foreground">({textures.length})</span>
-            </h3>
-            <div className="checkerboard grid aspect-square place-items-center overflow-hidden rounded-sm border border-border">
-              {preview.state === 'ready' && (
-                <img src={preview.value} alt={shown?.name ?? ''} className="max-h-full max-w-full object-contain" />
-              )}
-              {preview.state === 'loading' && <span className="text-xs text-muted-foreground">Decoding…</span>}
-              {preview.state === 'failed' && (
-                <span className="px-3 text-center text-xs text-destructive">{preview.error}</span>
-              )}
-            </div>
-            {shown && (
-              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                {shown.width}×{shown.height} · {shown.format} · {shown.mips} mip{shown.mips === 1 ? '' : 's'}
-              </p>
+        {saved && <p className="mt-2 break-all text-muted-foreground">{saved}</p>}
+      </PreviewSection>
+      {textures.length > 0 && (
+        <PreviewSection title={`Textures (${textures.length})`}>
+          <div className="checkerboard grid aspect-square place-items-center overflow-hidden rounded-sm border border-border">
+            {thumb.state === 'ready' && (
+              <img src={thumb.value} alt={shown?.name ?? ''} className="max-h-full max-w-full object-contain" />
             )}
-            <ul className="mt-2">
-              {textures.map((item) => (
-                <li key={item.index}>
-                  <button
-                    type="button"
-                    onClick={() => setTexture(item.index)}
-                    className={`flex h-6 w-full items-center gap-2 rounded-sm px-1.5 text-left text-xs ${
-                      item.index === texture ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <span className="truncate">{item.name || `texture ${item.index}`}</span>
-                    <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
-                      {item.width}×{item.height}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-    </aside>
-  );
-}
-
-function Property({ label, value, mono = false }: { label: string; value: string | undefined; mono?: boolean }) {
-  return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={`truncate text-foreground ${mono ? 'font-mono' : ''}`} title={value}>
-        {value}
-      </dd>
+            {thumb.state === 'loading' && <span className="text-muted-foreground">Decoding…</span>}
+            {thumb.state === 'failed' && <span className="px-3 text-center text-destructive">{thumb.error}</span>}
+          </div>
+          {shown && (
+            <p className="mt-1 truncate font-mono text-muted-foreground">
+              {shown.width}×{shown.height} · {shown.format} · {shown.mips} mip{shown.mips === 1 ? '' : 's'}
+            </p>
+          )}
+          <ul className="mt-2">
+            {textures.map((item) => (
+              <li key={item.index}>
+                <button
+                  type="button"
+                  onClick={() => setTexture(item.index)}
+                  className={`flex h-6 w-full items-center gap-2 rounded-sm px-1.5 text-left ${
+                    item.index === texture ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span className="truncate">{item.name || `texture ${item.index}`}</span>
+                  <span className="ml-auto shrink-0 font-mono text-muted-foreground">
+                    {item.width}×{item.height}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PreviewSection>
+      )}
     </>
-  );
-}
-
-function PanelButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-6 items-center rounded-sm border border-border px-2 text-foreground hover:bg-muted"
-    >
-      {label}
-    </button>
   );
 }

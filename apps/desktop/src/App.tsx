@@ -454,8 +454,20 @@ export function App() {
           {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}
-          {!opening && !viewer && !inCatalog && selectedEntry?.kind === 'resource' && (
-            <PropertiesPanel root={root} entry={selectedEntry} />
+          {!opening && !viewer && !inCatalog && selectedEntry && (
+            <PropertiesPanel
+              root={root}
+              entry={selectedEntry}
+              onOpen={(entry) => {
+                // The pane's Open shows the item itself, a search result included; folders and archives open as lists.
+                if (isViewable(entry)) {
+                  setSelected(entry.path);
+                  setViewer(entry);
+                } else {
+                  activate(entry);
+                }
+              }}
+            />
           )}
         </div>
       ) : (

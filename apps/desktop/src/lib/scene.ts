@@ -96,6 +96,7 @@ export function mountScene(
   glbPath: string,
   onReady: (stats: ModelStats) => void,
   onError: (error: unknown) => void,
+  options: { autoRotate?: boolean } = {},
 ): SceneHandle {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -112,6 +113,12 @@ export function mountScene(
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
+  // Previews turn slowly until the user takes the camera.
+  controls.autoRotate = options.autoRotate === true;
+  controls.autoRotateSpeed = 1.5;
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+  });
 
   let model: THREE.Object3D | null = null;
   let grid: THREE.GridHelper | null = null;

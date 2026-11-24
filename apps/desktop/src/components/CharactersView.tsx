@@ -2,8 +2,9 @@ import { Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
-import { type Character, characterList } from '../lib/characters';
+import { type Character, characterList, characterPreview } from '../lib/characters';
 import { formatSize } from '../lib/format';
+import { ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; characters: Character[] } | { state: 'failed'; error: string };
 
@@ -26,6 +27,8 @@ export function CharactersView({
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [progress, setProgress] = useState<CatalogProgress | null>(null);
   const [kind, setKind] = useState<Kind>('all');
+  /** The row the preview pane shows. */
+  const [selected, setSelected] = useState<Character | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -79,53 +82,81 @@ export function CharactersView({
 
   const all = loaded.characters;
   return (
-    <main aria-label="Characters" className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
-        <span className="font-title text-foreground">Characters</span>
-        <span className="font-mono tabular-nums">
-          {all.filter((c) => c.kind === 'character').length} characters ·{' '}
-          {all.filter((c) => c.kind === 'animal').length} animals
-        </span>
-        <select
-          aria-label="Kind"
-          value={kind}
-          onChange={(event) => setKind(kinds.find((value) => value === event.target.value) ?? 'all')}
-          className="ml-auto h-6 rounded-sm border border-border bg-background px-1 text-foreground"
-        >
-          <option value="all">All</option>
-          <option value="character">Characters</option>
-          <option value="animal">Animals</option>
-        </select>
-      </div>
-      <div
-        className="grid h-7 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground"
-        style={grid}
-      >
-        <span>Name</span>
-        <span>Kind</span>
-        <span className="text-right">Parts</span>
-        <span className="text-right">Worn by default</span>
-      </div>
-      <div className="flex-1 overflow-auto">
-        {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No character matches.</p>}
-        {rows.map((character) => (
-          <div
-            key={character.name}
-            role="row"
-            title={`Double-click to see ${character.name} in 3D`}
-            onDoubleClick={() => onOpen(character)}
-            className="grid h-6 cursor-default items-center gap-3 px-3 hover:bg-secondary"
-            style={grid}
+    <div className="flex min-w-0 flex-1">
+      <main aria-label="Characters" className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
+          <span className="font-title text-foreground">Characters</span>
+          <span className="font-mono tabular-nums">
+            {all.filter((c) => c.kind === 'character').length} characters ·{' '}
+            {all.filter((c) => c.kind === 'animal').length} animals
+          </span>
+          <select
+            aria-label="Kind"
+            value={kind}
+            onChange={(event) => setKind(kinds.find((value) => value === event.target.value) ?? 'all')}
+            className="ml-auto h-6 rounded-sm border border-border bg-background px-1 text-foreground"
           >
-            <span className="truncate font-mono text-xs">{character.name}</span>
-            <span className="text-muted-foreground">{character.kind}</span>
-            <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">{character.parts}</span>
-            <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
-              {character.defaultParts}
-            </span>
-          </div>
-        ))}
-      </div>
-    </main>
+            <option value="all">All</option>
+            <option value="character">Characters</option>
+            <option value="animal">Animals</option>
+          </select>
+        </div>
+        <div
+          className="grid h-7 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground"
+          style={grid}
+        >
+          <span>Name</span>
+          <span>Kind</span>
+          <span className="text-right">Parts</span>
+          <span className="text-right">Worn by default</span>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No character matches.</p>}
+          {rows.map((character) => (
+            <div
+              key={character.name}
+              role="row"
+              title={`Double-click to see ${character.name} in 3D`}
+              onClick={() => setSelected(character)}
+              onDoubleClick={() => onOpen(character)}
+              className={`grid h-6 cursor-default items-center gap-3 px-3 ${
+                selected?.name === character.name ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary'
+              }`}
+              style={grid}
+            >
+              <span className="truncate font-mono text-xs">{character.name}</span>
+              <span className="text-muted-foreground">{character.kind}</span>
+              <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">{character.parts}</span>
+              <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
+                {character.defaultParts}
+              </span>
+            </div>
+          ))}
+        </div>
+      </main>
+      {selected && <CharacterPane root={root} character={selected} onOpen={() => onOpen(selected)} />}
+    </div>
+  );
+}
+
+/** The selected character or animal: its default look turning in 3D. */
+function CharacterPane({ root, character, onOpen }: { root: string; character: Character; onOpen: () => void }) {
+  const glb = useSettled(character.name, () => characterPreview(root, character.name, null), 400);
+  return (
+    <PreviewPane title={character.name} subtitle={character.kind} onOpen={onOpen}>
+      <PreviewSection>
+        <ModelPreview loaded={glb} waiting="Assembling its default look…" />
+      </PreviewSection>
+      <PreviewSection>
+        <Properties
+          rows={[
+            ['Kind', character.kind],
+            ['Parts', character.parts],
+            ['Worn by default', character.defaultParts],
+          ]}
+        />
+        <p className="mt-2 text-muted-foreground">Open it to change its parts.</p>
+      </PreviewSection>
+    </PreviewPane>
   );
 }

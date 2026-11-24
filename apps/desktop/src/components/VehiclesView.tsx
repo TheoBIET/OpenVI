@@ -12,6 +12,8 @@ import {
   vehiclesCsv,
 } from '../lib/catalog';
 import { formatSize } from '../lib/format';
+import { vehiclePreview } from '../lib/model';
+import { ModelPreview, PreviewPane, PreviewSection, Properties, useSettled } from './preview';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; catalog: VehicleCatalog } | { state: 'failed'; error: string };
 
@@ -72,6 +74,8 @@ export function VehiclesView({
     descending: false,
   });
   const [notice, setNotice] = useState<string | null>(null);
+  /** The row the preview pane shows. */
+  const [selected, setSelected] = useState<Vehicle | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -149,87 +153,138 @@ export function VehiclesView({
 
   const all = loaded.catalog.vehicles;
   return (
-    <main aria-label="Vehicles" className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
-        <span className="font-title text-foreground">Vehicles</span>
-        <span className="font-mono tabular-nums">
-          {rows.length === all.length ? `${all.length} models` : `${rows.length} of ${all.length} models`}
-        </span>
-        <span>{all.filter((v) => v.displayName).length} with a display name</span>
-        {notice && <span className="truncate text-warning">{notice}</span>}
-        <span className="ml-auto flex items-center gap-1">
-          {(['csv', 'json'] as const).map((format) => (
+    <div className="flex min-w-0 flex-1">
+      <main aria-label="Vehicles" className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
+          <span className="font-title text-foreground">Vehicles</span>
+          <span className="font-mono tabular-nums">
+            {rows.length === all.length ? `${all.length} models` : `${rows.length} of ${all.length} models`}
+          </span>
+          <span>{all.filter((v) => v.displayName).length} with a display name</span>
+          {notice && <span className="truncate text-warning">{notice}</span>}
+          <span className="ml-auto flex items-center gap-1">
+            {(['csv', 'json'] as const).map((format) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => void exportAs(format)}
+                className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+              >
+                <FileDown className="size-3.5" />
+                {format.toUpperCase()}
+              </button>
+            ))}
+          </span>
+        </div>
+        <div className="grid h-7 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs" style={grid}>
+          {columns.map((column) => (
             <button
-              key={format}
+              key={column.key}
               type="button"
-              onClick={() => void exportAs(format)}
-              className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+              onClick={() =>
+                setSort((previous) => ({
+                  key: column.key,
+                  descending: previous.key === column.key ? !previous.descending : column.numeric === true,
+                }))
+              }
+              className={`flex items-center gap-1 truncate text-muted-foreground hover:text-foreground ${column.numeric ? 'justify-end' : ''}`}
             >
-              <FileDown className="size-3.5" />
-              {format.toUpperCase()}
+              {column.label}
+              {sort.key === column.key &&
+                (sort.descending ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />)}
             </button>
           ))}
-        </span>
-      </div>
-      <div className="grid h-7 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs" style={grid}>
-        {columns.map((column) => (
-          <button
-            key={column.key}
-            type="button"
-            onClick={() =>
-              setSort((previous) => ({
-                key: column.key,
-                descending: previous.key === column.key ? !previous.descending : column.numeric === true,
-              }))
-            }
-            className={`flex items-center gap-1 truncate text-muted-foreground hover:text-foreground ${column.numeric ? 'justify-end' : ''}`}
-          >
-            {column.label}
-            {sort.key === column.key &&
-              (sort.descending ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />)}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-auto">
-        {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No vehicle matches.</p>}
-        {rows.map((vehicle) => (
-          <div
-            key={vehicle.modelHash}
-            role="row"
-            title={vehicle.model ? `Double-click to see ${vehicle.model} in 3D` : vehicle.modelHash}
-            onDoubleClick={() => onOpen(vehicle)}
-            className="grid h-6 cursor-default items-center gap-3 px-3 hover:bg-secondary"
-            style={grid}
-          >
-            {columns.map((column) => {
-              const text = column.format ? column.format(vehicle) : String(vehicle[column.key] ?? '');
-              if (column.key === 'colour') {
+        </div>
+        <div className="flex-1 overflow-auto">
+          {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No vehicle matches.</p>}
+          {rows.map((vehicle) => (
+            <div
+              key={vehicle.modelHash}
+              role="row"
+              title={vehicle.model ? `Double-click to see ${vehicle.model} in 3D` : vehicle.modelHash}
+              onClick={() => setSelected(vehicle)}
+              onDoubleClick={() => onOpen(vehicle)}
+              className={`grid h-6 cursor-default items-center gap-3 px-3 ${
+                selected?.modelHash === vehicle.modelHash ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary'
+              }`}
+              style={grid}
+            >
+              {columns.map((column) => {
+                const text = column.format ? column.format(vehicle) : String(vehicle[column.key] ?? '');
+                if (column.key === 'colour') {
+                  return (
+                    <span
+                      key={column.key}
+                      className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground"
+                    >
+                      {vehicle.colour && (
+                        <span
+                          className="size-3 shrink-0 rounded-sm border border-border"
+                          style={{ backgroundColor: vehicle.colour }}
+                        />
+                      )}
+                      {vehicle.colour ?? ''}
+                    </span>
+                  );
+                }
                 return (
-                  <span key={column.key} className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-                    {vehicle.colour && (
-                      <span
-                        className="size-3 shrink-0 rounded-sm border border-border"
-                        style={{ backgroundColor: vehicle.colour }}
-                      />
-                    )}
-                    {vehicle.colour ?? ''}
+                  <span
+                    key={column.key}
+                    className={`truncate ${column.numeric ? 'text-right font-mono text-xs text-muted-foreground tabular-nums' : ''} ${
+                      column.key === 'model' ? 'font-mono text-xs text-muted-foreground' : ''
+                    }`}
+                  >
+                    {text}
                   </span>
                 );
-              }
-              return (
-                <span
-                  key={column.key}
-                  className={`truncate ${column.numeric ? 'text-right font-mono text-xs text-muted-foreground tabular-nums' : ''} ${
-                    column.key === 'model' ? 'font-mono text-xs text-muted-foreground' : ''
-                  }`}
-                >
-                  {text}
-                </span>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </main>
+              })}
+            </div>
+          ))}
+        </div>
+      </main>
+      {selected && <VehiclePane root={root} vehicle={selected} onOpen={() => onOpen(selected)} />}
+    </div>
+  );
+}
+
+/** The selected vehicle: its data and the car turning in 3D. */
+function VehiclePane({ root, vehicle, onOpen }: { root: string; vehicle: Vehicle; onOpen: () => void }) {
+  const model = vehicle.model;
+  const glb = useSettled(vehicle.modelHash, model ? () => vehiclePreview(root, model, 0) : null, 400);
+  return (
+    <PreviewPane
+      title={vehicle.displayName ?? vehicle.model ?? vehicle.modelHash}
+      subtitle={[vehicle.make, vehicle.model].filter(Boolean).join(' · ')}
+      onOpen={model ? onOpen : null}
+    >
+      {model && (
+        <PreviewSection>
+          <ModelPreview
+            loaded={glb}
+            waiting="Exporting it with its wheels… (the first time scans levels.rpf, about 3 min)"
+          />
+        </PreviewSection>
+      )}
+      <PreviewSection>
+        <Properties
+          rows={[
+            ['Model', vehicle.model, true],
+            ['Hash', vehicle.modelHash, true],
+            ['Make', vehicle.make],
+            ['Handling', vehicle.handlingName ?? vehicle.handlingId, true],
+            ['Mass', vehicle.mass === null ? null : `${number(vehicle.mass)} kg`],
+            ['Top speed', vehicle.maxSpeed === null ? null : `${number(vehicle.maxSpeed)} km/h`],
+            ['Gears', vehicle.gears],
+            ['Drive force', vehicle.driveForce === null ? null : number(vehicle.driveForce, 3)],
+            ['Steering lock', vehicle.steeringLock === null ? null : `${number(vehicle.steeringLock, 3)} rad`],
+            ['Configurations', vehicle.configurations],
+            ['Palettes', vehicle.palettes],
+            ['Colour', vehicle.colour, true],
+            ['Rim', vehicle.rim, true],
+            ['Tyre', vehicle.tyre, true],
+          ]}
+        />
+      </PreviewSection>
+    </PreviewPane>
   );
 }
