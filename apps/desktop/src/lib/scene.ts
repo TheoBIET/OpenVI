@@ -12,6 +12,8 @@ export type ModelStats = {
   textures: number;
   /** File names of the textures that could not be loaded (the materials show without them). */
   missingTextures: string[];
+  /** The GLB's animations (clips), playable with the handle. */
+  animations: { name: string; duration: number }[];
 };
 
 /**
@@ -21,7 +23,18 @@ export type ModelStats = {
  */
 export type RenderMode = 'lit' | 'unlit' | 'clay' | 'normals' | 'wireframe';
 
-export type SceneHandle = { dispose: () => void; setMode: (mode: RenderMode) => void; frame: () => void };
+export type SceneHandle = {
+  dispose: () => void;
+  setMode: (mode: RenderMode) => void;
+  frame: () => void;
+  /** Plays animation `index` from the start (the others stop); `null` stops all and restores the rest pose. */
+  play: (index: number | null) => void;
+  setPaused: (paused: boolean) => void;
+  setSpeed: (speed: number) => void;
+  /** Seconds into the playing animation. */
+  time: () => number;
+  seek: (seconds: number) => void;
+};
 
 /** Materials the other modes swap in, made once per scene. */
 function modeMaterials() {
@@ -103,6 +116,12 @@ export function mountScene(
   let model: THREE.Object3D | null = null;
   let grid: THREE.GridHelper | null = null;
   let frameId = 0;
+  const clock = new THREE.Clock();
+  let mixer: THREE.AnimationMixer | null = null;
+  let clips: THREE.AnimationClip[] = [];
+  let action: THREE.AnimationAction | null = null;
+  let paused = false;
+  let speed = 1;
   let disposed = false;
   /** Each mesh's own material(s), restored by the `lit` mode. */
   const originals = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
@@ -197,12 +216,21 @@ export function mountScene(
           for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
         }
       }
+      // Ready before onReady, so the caller can start an animation from it.
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        clips = gltf.animations;
+      }
       onReady({
         meshes,
         triangles: Math.round(triangles),
         size: [size.x, size.y, size.z],
         textures: textures.size,
         missingTextures: [...new Set(failed)],
+        animations: clips.map((clip, index) => ({
+          name: clip.name || `animation ${index + 1}`,
+          duration: clip.duration,
+        })),
       });
     },
     undefined,
@@ -211,6 +239,8 @@ export function mountScene(
 
   function render() {
     frameId = requestAnimationFrame(render);
+    const delta = clock.getDelta();
+    if (mixer && !paused) mixer.update(delta * speed);
     controls.update();
     renderer.render(scene, camera);
   }
@@ -222,9 +252,33 @@ export function mountScene(
       mode = next;
       apply();
     },
+    play(index) {
+      if (!mixer) return;
+      mixer.stopAllAction();
+      action = null;
+      const clip = index === null ? undefined : clips[index];
+      if (!clip) return;
+      action = mixer.clipAction(clip);
+      action.reset().play();
+    },
+    setPaused(next) {
+      paused = next;
+    },
+    setSpeed(next) {
+      speed = next;
+    },
+    time() {
+      return action ? action.time : 0;
+    },
+    seek(seconds) {
+      if (!action || !mixer) return;
+      action.time = seconds;
+      mixer.update(0);
+    },
     dispose() {
       disposed = true;
       cancelAnimationFrame(frameId);
+      mixer?.stopAllAction();
       observer.disconnect();
       controls.dispose();
       for (const [mesh, own] of originals) {

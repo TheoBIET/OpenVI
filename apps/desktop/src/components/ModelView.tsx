@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
 import type { ModelStats, RenderMode, SceneHandle } from '../lib/scene';
+import { AnimationBar } from './AnimationBar';
 import { MaterialsPanel } from './MaterialsPanel';
 
 const modes: { mode: RenderMode; label: string; hint: string }[] = [
@@ -145,6 +146,9 @@ export function ModelView({ path, title, actions }: { path: string; title: strin
         </div>
         {showMaterials && <MaterialsPanel glb={path} />}
       </div>
+      {stats && handle.current && stats.animations.length > 0 && (
+        <AnimationBar handle={handle.current} animations={stats.animations} />
+      )}
       <p className="h-6 shrink-0 border-t border-border bg-card px-3 text-xs leading-6 text-muted-foreground">
         Drag to orbit · right-drag to pan · wheel to zoom
       </p>
