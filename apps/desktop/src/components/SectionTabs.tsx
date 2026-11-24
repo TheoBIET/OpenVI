@@ -7,7 +7,7 @@ const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }
   { id: 'vehicles', label: 'Vehicles', icon: Car, ready: true },
   { id: 'characters', label: 'Characters', icon: Users, ready: true },
   { id: 'weapons', label: 'Weapons', icon: Crosshair, ready: false },
-  { id: 'animations', label: 'Animations', icon: Clapperboard, ready: false },
+  { id: 'animations', label: 'Animations', icon: Clapperboard, ready: true },
 ];
 
 /** The explorer, then the catalogs built from the game data: one tab each. */

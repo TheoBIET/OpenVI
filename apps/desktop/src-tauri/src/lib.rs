@@ -1,5 +1,6 @@
 //! OpenVI desktop backend: Tauri commands the React frontend calls.
 
+mod animations;
 mod archive;
 mod catalog;
 mod characters;
@@ -37,6 +38,8 @@ pub fn run() {
             characters::characters,
             characters::character_part_list,
             characters::character_preview,
+            animations::animation_dictionaries,
+            animations::animation_clips,
             export::save_resource,
             export::save_texture,
             export::save_model

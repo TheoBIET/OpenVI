@@ -91,17 +91,32 @@ pub async fn character_part_list(app: AppHandle, root: PathBuf, name: String) ->
     blocking(move || character_parts(&root, &work, &name)).await
 }
 
-/// The GLB of character `name` wearing `parts` (offsets), or its default look when `parts` is null.
+/// The GLB of character `name` wearing `parts` (offsets), or its default look when `parts` is null; with a clip
+/// (`dictionary` and `clip` names) as its animation, on the skeleton alone when `skeleton_only`.
 #[tauri::command]
 pub async fn character_preview(
     app: AppHandle,
     root: PathBuf,
     name: String,
     parts: Option<Vec<u64>>,
+    dictionary: Option<String>,
+    clip: Option<String>,
+    skeleton_only: Option<bool>,
 ) -> Result<PathBuf, String> {
     let root = index::canonical_root(&root)?;
     let work = index::work_dir(&app)?;
-    blocking(move || character_glb(&root, &work, &name, parts.as_deref())).await
+    blocking(move || {
+        let chosen = dictionary.as_deref().zip(clip.as_deref());
+        character_glb(
+            &root,
+            &work,
+            &name,
+            parts.as_deref(),
+            chosen,
+            skeleton_only.unwrap_or(false),
+        )
+    })
+    .await
 }
 
 #[cfg(test)]

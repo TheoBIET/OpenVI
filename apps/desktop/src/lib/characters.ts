@@ -23,7 +23,22 @@ export function characterParts(root: string, name: string): Promise<CharacterPar
   return invoke<CharacterPart[]>('character_part_list', { root, name });
 }
 
-/** The GLB of character `name` wearing `parts` (offsets), or its default look when `parts` is null. */
-export function characterPreview(root: string, name: string, parts: number[] | null): Promise<string> {
-  return invoke<string>('character_preview', { root, name, parts });
+/** An animation clip to play on a character, on its skeleton alone when `skeletonOnly`. */
+export type ClipChoice = { dictionary: string; clip: string; skeletonOnly: boolean };
+
+/** The GLB of character `name` wearing `parts` (offsets), or its default look when `parts` is null; with `clip` as its animation. */
+export function characterPreview(
+  root: string,
+  name: string,
+  parts: number[] | null,
+  clip: ClipChoice | null = null,
+): Promise<string> {
+  return invoke<string>('character_preview', {
+    root,
+    name,
+    parts,
+    dictionary: clip?.dictionary ?? null,
+    clip: clip?.clip ?? null,
+    skeletonOnly: clip?.skeletonOnly ?? false,
+  });
 }

@@ -1,6 +1,7 @@
 import { open } from '@tauri-apps/plugin-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { AnimationsView } from './components/AnimationsView';
 import { CharacterPreview } from './components/CharacterPreview';
 import { CharactersView } from './components/CharactersView';
 import { DocumentView, isViewable } from './components/DocumentView';
@@ -54,6 +55,9 @@ const vehicleCrumb = '#vehicle';
 /** Paths of the breadcrumbs that stand for the character list and the character shown in 3D. */
 const charactersCrumb = '#characters';
 const characterCrumb = '#character';
+
+/** Path of the breadcrumb that stands for the Animations section. */
+const animationsCrumb = '#animations';
 
 type History = { stack: string[]; index: number };
 
@@ -183,7 +187,8 @@ export function App() {
       path === vehiclesCrumb ||
       path === vehicleCrumb ||
       path === charactersCrumb ||
-      path === characterCrumb
+      path === characterCrumb ||
+      path === animationsCrumb
     )
       return;
     if (path === listing?.path && !search) {
@@ -354,6 +359,7 @@ export function App() {
   if (vehiclesOpen && rootCrumb && vehicle) {
     crumbs = [...crumbs, { name: vehicle.displayName ?? vehicle.model ?? vehicle.modelHash, path: vehicleCrumb }];
   }
+  if (section === 'animations' && rootCrumb) crumbs = [rootCrumb, { name: 'Animations', path: animationsCrumb }];
   if (section === 'characters' && rootCrumb) {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
@@ -444,6 +450,7 @@ export function App() {
           {!opening && !viewer && section === 'characters' && character && (
             <CharacterPreview root={root} character={character} />
           )}
+          {!opening && !viewer && section === 'animations' && <AnimationsView root={root} filter={filter} />}
           {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}
