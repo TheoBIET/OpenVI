@@ -2,6 +2,13 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.7.0 (2026-11-24)
+
+- Section tabs under the toolbar: Explorer and Vehicles, with Characters, Weapons and Animations to come. Catalogs
+  take the whole width; Vehicles leaves the toolbar for its tab.
+- Animation player in the 3D view, for models that carry animations: clip (or rest pose), play and pause, time line,
+  speed from ×0.25 to ×2.
+
 ## 0.6.2 (2026-11-24)
 
 - Model textures come from the texture stores (`data/ttdb/*.ttpf`), not the archives: model exports are redone when a
