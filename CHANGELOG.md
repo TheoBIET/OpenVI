@@ -2,6 +2,16 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.14.0 (2026-11-25)
+
+- Characters: every ped model of the game's outfit list, not only the characters with parts named after them (about
+  2,700), with the name the game shows beside the model name ("Mandy" for `cs_mandy`) where the data gives one; the
+  filter finds either. A model opens in its first outfit, and the Parts panel's Outfit list dresses it in any other.
+  Names that may be chance hash matches are marked with a ?.
+- Animations: named ped models can play clips too, listed with their game name.
+- SixNG updated (29 commits): clips on animals, hair colours from the hair preset, drum brakes, tyres stay black,
+  more names.
+
 ## 0.13.1 (2026-11-25)
 
 - Website: a presentation page on GitHub Pages (`apps/site`, deployed by the `Pages` workflow): what OpenVI does,
