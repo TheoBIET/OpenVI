@@ -2,7 +2,7 @@ import { Eye, FolderDown, Focus, Palette } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
-import type { RenderMode } from '../lib/scene';
+import { isAssembly, type RenderMode } from '../lib/scene';
 import { AnimationBar } from './AnimationBar';
 import { MaterialsPanel } from './MaterialsPanel';
 import { BusyOverlay, StageSkeleton } from './skeleton';
@@ -47,6 +47,8 @@ export function ModelView({
   const [saved, setSaved] = useState<string | null>(null);
   // Kept open from one model to the next, like the render mode.
   const [showMaterials, setShowMaterials] = useState(false);
+  /** Several models placed together (a weapon from its parts): no single GLB to export or report on. */
+  const assembly = isAssembly(path);
 
   const { handle, stats, error, loading } = useBufferedScene(stage, path, { mode });
   // The clip's animations, loaded onto the model on screen; null: the model's own.
@@ -107,20 +109,22 @@ export function ModelView({
         {saved && <span className="truncate">{saved}</span>}
         <span className="ml-auto flex items-center gap-1">
           {actions}
-          <button
-            type="button"
-            title="Copy the GLB and its textures to a folder"
-            onClick={() =>
-              saveModel(path).then(
-                (dest) => dest && setSaved(`Exported to ${dest}`),
-                (error: unknown) => setSaved(String(error)),
-              )
-            }
-            className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
-          >
-            <FolderDown className="size-3.5" />
-            Export
-          </button>
+          {!assembly && (
+            <button
+              type="button"
+              title="Copy the GLB and its textures to a folder"
+              onClick={() =>
+                saveModel(path).then(
+                  (dest) => dest && setSaved(`Exported to ${dest}`),
+                  (error: unknown) => setSaved(String(error)),
+                )
+              }
+              className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+            >
+              <FolderDown className="size-3.5" />
+              Export
+            </button>
+          )}
           <label className="flex items-center gap-1" title={modes.find((item) => item.mode === mode)?.hint}>
             <Eye className="size-3.5" />
             <select
@@ -148,18 +152,20 @@ export function ModelView({
             <Focus className="size-3.5" />
             Frame
           </button>
-          <button
-            type="button"
-            aria-pressed={showMaterials}
-            title="Each material's textures and why one is missing"
-            onClick={() => setShowMaterials(!showMaterials)}
-            className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
-              showMaterials ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
-            }`}
-          >
-            <Palette className="size-3.5" />
-            Materials
-          </button>
+          {!assembly && (
+            <button
+              type="button"
+              aria-pressed={showMaterials}
+              title="Each material's textures and why one is missing"
+              onClick={() => setShowMaterials(!showMaterials)}
+              className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
+                showMaterials ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
+              }`}
+            >
+              <Palette className="size-3.5" />
+              Materials
+            </button>
+          )}
         </span>
       </div>
       <div className="flex min-h-0 flex-1">
@@ -183,7 +189,7 @@ export function ModelView({
             </p>
           )}
         </div>
-        {showMaterials && <MaterialsPanel glb={path} />}
+        {showMaterials && !assembly && <MaterialsPanel glb={path} />}
       </div>
       {stats && handle && animations.length > 0 && <AnimationBar handle={handle} animations={animations} />}
       <p className="h-6 shrink-0 border-t border-border bg-card px-3 text-xs leading-6 text-muted-foreground">

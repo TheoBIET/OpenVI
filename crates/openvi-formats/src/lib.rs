@@ -11,6 +11,7 @@ pub mod characters;
 pub mod fixtures;
 pub mod index_cache;
 pub mod model;
+pub mod weapons;
 
 use std::path::Path;
 use std::sync::Arc;

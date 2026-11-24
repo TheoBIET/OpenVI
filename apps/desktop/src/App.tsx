@@ -15,6 +15,8 @@ import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
 import { VehiclePreview } from './components/VehiclePreview';
 import { VehiclesView } from './components/VehiclesView';
+import { WeaponPreview } from './components/WeaponPreview';
+import { WeaponsView } from './components/WeaponsView';
 import type { Vehicle } from './lib/catalog';
 import type { Character } from './lib/characters';
 import {
@@ -37,6 +39,7 @@ import {
   onIndexProgress,
   searchIndex,
 } from './lib/index';
+import type { Weapon } from './lib/weapons';
 
 const lastFolderKey = 'openvi.lastGameFolder';
 
@@ -55,6 +58,10 @@ const vehicleCrumb = '#vehicle';
 /** Paths of the breadcrumbs that stand for the character list and the character shown in 3D. */
 const charactersCrumb = '#characters';
 const characterCrumb = '#character';
+
+/** Paths of the breadcrumbs that stand for the weapon list and the weapon shown in 3D. */
+const weaponsCrumb = '#weapons';
+const weaponCrumb = '#weapon';
 
 /** Path of the breadcrumb that stands for the Animations section. */
 const animationsCrumb = '#animations';
@@ -103,6 +110,8 @@ export function App() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   /** A character of the Characters section shown in 3D. */
   const [character, setCharacter] = useState<Character | null>(null);
+  /** A weapon of the Weapons section shown in 3D. */
+  const [weapon, setWeapon] = useState<Weapon | null>(null);
   /** In a catalog section rather than the explorer. */
   const inCatalog = section !== 'explorer';
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
@@ -149,6 +158,7 @@ export function App() {
     setVehiclesOpen(false);
     setVehicle(null);
     setCharacter(null);
+    setWeapon(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -180,6 +190,7 @@ export function App() {
   async function navigate(path: string, select: string | null = null) {
     if (path === vehiclesCrumb) setVehicle(null);
     if (path === charactersCrumb) setCharacter(null);
+    if (path === weaponsCrumb) setWeapon(null);
     if (
       !root ||
       path === searchCrumb ||
@@ -188,6 +199,8 @@ export function App() {
       path === vehicleCrumb ||
       path === charactersCrumb ||
       path === characterCrumb ||
+      path === weaponsCrumb ||
+      path === weaponCrumb ||
       path === animationsCrumb
     )
       return;
@@ -218,6 +231,10 @@ export function App() {
     }
     if (character && step === -1) {
       setCharacter(null);
+      return;
+    }
+    if (weapon && step === -1) {
+      setWeapon(null);
       return;
     }
     if (inCatalog && step === -1) {
@@ -374,10 +391,15 @@ export function App() {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
   }
+  if (section === 'weapons' && rootCrumb) {
+    crumbs = [rootCrumb, { name: 'Weapons', path: weaponsCrumb }];
+    if (weapon) crumbs = [...crumbs, { name: weapon.name, path: weaponCrumb }];
+  }
   const goUp = () => {
     if (viewer) setViewer(null);
     else if (vehicle && vehiclesOpen) setVehicle(null);
     else if (character && section === 'characters') setCharacter(null);
+    else if (weapon && section === 'weapons') setWeapon(null);
     else if (inCatalog) setVehiclesOpen(false);
     else if (search) void travel(-1);
     else if (parent) void navigate(parent.path);
@@ -460,6 +482,10 @@ export function App() {
           {!opening && !viewer && section === 'characters' && character && (
             <CharacterPreview root={root} character={character} />
           )}
+          {!opening && !viewer && section === 'weapons' && !weapon && (
+            <WeaponsView root={root} filter={filter} onOpen={setWeapon} />
+          )}
+          {!opening && !viewer && section === 'weapons' && weapon && <WeaponPreview root={root} weapon={weapon} />}
           {!opening && !viewer && section === 'animations' && <AnimationsView root={root} filter={filter} />}
           {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />

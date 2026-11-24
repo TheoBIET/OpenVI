@@ -136,6 +136,15 @@ is newer) and their clips; a clip plays through `character_glb` with a clip, whi
 (bone tracks on the joints of the same name; `anim_only` for the skeleton alone). The look folder's name includes
 the clip, and its sources `anim.rpf`'s state.
 
+## Weapons
+
+`openvi_formats::weapons` lists the weapon models (`sixng_core::weapon::is_weapon`, `_hi` copy first) of `data.rpf` and
+`packs.rpf` and their parts (`weapon_options`). An assembly exports the base and each part like any model
+(`model_glb`), reads each one's bones from the `model.json` beside its GLB, places the parts with
+`weapon::place` (RAGE Z-up, converted to glTF Y-up) and writes a manifest (`<work>/weapons/.../*.weapon.json`: GLB
+paths and matrices). The 3D view loads a manifest as one model (`lib/scene.ts`, `isAssembly`); Export and Materials
+are hidden for it.
+
 ## Releases and updates
 
 `release.yml` runs on a `v*` tag: one job creates the release with that version's CHANGELOG section, then one job

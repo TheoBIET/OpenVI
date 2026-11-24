@@ -71,6 +71,8 @@ State of the work and the next task, for whoever picks it up. Update it when you
   is the repository secret `TAURI_SIGNING_PRIVATE_KEY` (no password); the maintainer keeps the only other copy
   (`~/.tauri/openvi-updater.key`). Losing it means installed copies can no longer update: never rotate it without
   shipping a release signed with the old key that carries the new public key.
+- **Done (0.16.0):** Weapons section (list, 3D build from parts, Parts panel). **Never seen: needs `data.rpf` and
+  `packs.rpf`.** Finishes (`matlib::weapon_finishes`) are not offered yet.
 - **Releasing:** `pnpm bump x.y.z`, CHANGELOG entry, commit, `git tag -a vx.y.z`, push `main`, then push the tag
   alone (`git push origin vx.y.z`) once the maintainer agrees: that builds and publishes the release. Pushing more
   than three tags at once starts no workflow.
@@ -142,9 +144,9 @@ carver cannot see, folders counted in the header, or the missing parts above.
    the vehicle catalog's models.
 3. **SixNG's new decoders**: a game text search (`sixng_core::text`, 4.2 M strings), then a Cutscenes section
    (`sixng_core::cutscene`: every story scene's cast, props, cameras and clips, played on the cast).
-4. **Weapons**:
-   `sixng_core::weapon` and `matlib` (weapon models and finishes). Then text tables (`sixng_core::text`) and the other
-   data-mining views of [PRODUCT.md](PRODUCT.md).
+4. **More sections for a broad audience**, one release each: Clothes (wardrobe items by slot, style and colour,
+   tried on a character), Audio (banks played in the app, Ogg/WAV export), Text, Cutscenes, Interiors (MLO rooms,
+   contents and entity sets); weapon finishes. Then the map, in the spirit of CodeWalker.
 5. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
 6. **Publishing**: green CI and a first tagged release (release workflow). The GitHub Pages site (`apps/site`,

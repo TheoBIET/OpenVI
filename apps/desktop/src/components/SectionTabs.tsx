@@ -6,7 +6,7 @@ const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }
   { id: 'explorer', label: 'Explorer', icon: FolderTree, ready: true },
   { id: 'vehicles', label: 'Vehicles', icon: Car, ready: true },
   { id: 'characters', label: 'Characters', icon: Users, ready: true },
-  { id: 'weapons', label: 'Weapons', icon: Crosshair, ready: false },
+  { id: 'weapons', label: 'Weapons', icon: Crosshair, ready: true },
   { id: 'animations', label: 'Animations', icon: Clapperboard, ready: true },
 ];
 

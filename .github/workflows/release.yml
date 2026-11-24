@@ -14,9 +14,12 @@ jobs:
   release:
     name: Create the release
     runs-on: ubuntu-latest
+    outputs:
+      notes: ${{ steps.notes.outputs.notes }}
     steps:
       - uses: actions/checkout@v4
       - name: Release notes from the changelog
+        id: notes
         run: |
           version="${GITHUB_REF_NAME#v}"
           awk -v heading="## ${version} " 'index($0, heading) == 1 { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md > notes.md
@@ -27,6 +30,7 @@ jobs:
             echo 'update themselves: the status bar offers each new version.'
           } >> notes.md
           cat notes.md
+          { echo "notes<<NOTES_END"; cat notes.md; echo NOTES_END; } >> "$GITHUB_OUTPUT"
       - name: Create it, or keep the one there
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,6 +77,8 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: OpenVI ${{ github.ref_name }}
+          # Also the notes installed copies show beside "Update to x.y.z" (latest.json).
+          releaseBody: ${{ needs.release.outputs.notes }}
           releaseDraft: false
           includeUpdaterJson: true
           # Windows updates install the NSIS setup (.exe), not the MSI.

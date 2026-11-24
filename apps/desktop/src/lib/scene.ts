@@ -133,6 +133,61 @@ function loadingManager(glbPath: string, failed: string[]): THREE.LoadingManager
   return manager;
 }
 
+/** A model loaded: its scene and animations. */
+type LoadedModel = { scene: THREE.Object3D; animations: THREE.AnimationClip[] };
+
+async function loadGlb(path: string, failed: string[]): Promise<LoadedModel> {
+  const loader = new GLTFLoader(loadingManager(path, failed));
+  loader.setResourcePath(RESOURCE);
+  const gltf = await loader.loadAsync(convertFileSrc(path));
+  return { scene: gltf.scene, animations: gltf.animations };
+}
+
+/** One model of an assembly: a GLB and the column-major matrix that places it. */
+type AssemblyPart = { name: string; glb: string; matrix: number[] };
+
+function isAssemblyPart(value: unknown): value is AssemblyPart {
+  if (typeof value !== 'object' || value === null) return false;
+  const name: unknown = Reflect.get(value, 'name');
+  const glb: unknown = Reflect.get(value, 'glb');
+  const matrix: unknown = Reflect.get(value, 'matrix');
+  return (
+    typeof name === 'string' &&
+    typeof glb === 'string' &&
+    Array.isArray(matrix) &&
+    matrix.length === 16 &&
+    matrix.every((item) => typeof item === 'number')
+  );
+}
+
+/**
+ * Whether `path` is an assembly manifest (`*.weapon.json`: several GLBs, each with its matrix, written by the
+ * backend) rather than one GLB.
+ */
+export function isAssembly(path: string): boolean {
+  return path.toLowerCase().endsWith('.json');
+}
+
+/** The GLB at `path`, or every model of the assembly manifest at `path` placed in one group. */
+async function loadModel(path: string, failed: string[]): Promise<LoadedModel> {
+  if (!isAssembly(path)) return loadGlb(path, failed);
+  const response = await fetch(convertFileSrc(path));
+  const manifest: unknown = await response.json();
+  const models: unknown = typeof manifest === 'object' && manifest !== null ? Reflect.get(manifest, 'models') : null;
+  if (!Array.isArray(models) || !models.every(isAssemblyPart)) throw new Error(`${path} is not an assembly`);
+  const group = new THREE.Group();
+  const parts = await Promise.all(
+    models.map(async (part) => {
+      const loaded = await loadGlb(part.glb, failed);
+      loaded.scene.name = part.name;
+      loaded.scene.applyMatrix4(new THREE.Matrix4().fromArray(part.matrix));
+      return loaded.scene;
+    }),
+  );
+  group.add(...parts);
+  return { scene: group, animations: [] };
+}
+
 /**
  * Renders the GLB file at `glbPath` in `host`, orbit controls on, model standing on a grid at the origin (glTF is
  * Y-up, in metres). Calls `onReady` once loaded, `onError` when it cannot be. Returns how to drive and dispose it.
@@ -228,10 +283,7 @@ export function mountScene(
   resize();
 
   const failed: string[] = [];
-  const loader = new GLTFLoader(loadingManager(glbPath, failed));
-  loader.setResourcePath(RESOURCE);
-  loader.load(
-    convertFileSrc(glbPath),
+  loadModel(glbPath, failed).then(
     (gltf) => {
       if (disposed) return;
       model = gltf.scene;
@@ -292,8 +344,7 @@ export function mountScene(
         })),
       });
     },
-    undefined,
-    (error) => !disposed && onError(error),
+    (error: unknown) => !disposed && onError(error),
   );
 
   function render() {

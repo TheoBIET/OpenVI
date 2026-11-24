@@ -12,6 +12,7 @@ mod model;
 mod progress;
 mod resource;
 mod scans;
+mod weapons;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +40,9 @@ pub fn run() {
             model::vehicle_preview,
             model::model_materials,
             characters::characters,
+            weapons::weapons,
+            weapons::weapon_part_list,
+            weapons::weapon_preview,
             characters::character_part_list,
             characters::character_preview,
             animations::animation_dictionaries,
