@@ -4,12 +4,15 @@
 //! Everything read is unencrypted. An RPF9 archive's table of contents is encrypted and is skipped untouched; its
 //! data area is plain zlib, so resources are found by carving those streams and sniffing their first bytes.
 
+#[cfg(any(test, feature = "fixtures"))]
+pub mod fixtures;
+
 use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
 use serde::Serialize;
-use sixng_core::{classify, rpf9, scan};
+use sixng_core::{classify, export, rpf9, scan};
 
 /// The plain part of an RPF9 header.
 #[derive(Debug, Clone, Serialize)]
@@ -95,6 +98,23 @@ pub struct ArchiveEntry {
     pub sub_type: String,
     /// Suggested extension for an export.
     pub extension: String,
+    /// The name the resource carries in its own data, when it has one.
+    pub name: Option<String>,
+    /// RAGE type tag from that name (`dr`, `ft`, `dd`, ...) or `txd` for a texture dictionary.
+    pub resource_type: Option<String>,
+}
+
+impl ArchiveEntry {
+    /// The explorer's "Type" column: the RAGE type when known, else the sniffed kind.
+    pub fn type_name(&self) -> &'static str {
+        match self.resource_type.as_deref() {
+            Some("dr") => "Drawable",
+            Some("ft") => "Fragment",
+            Some("dd") => "Drawable Dictionary",
+            Some("td" | "txd") => "Texture Dictionary",
+            _ => self.kind.label(),
+        }
+    }
 }
 
 /// Everything a scan found in one archive.
@@ -107,6 +127,16 @@ pub struct ArchiveScan {
     pub coverage: f64,
 }
 
+/// The two passes of a first scan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScanPhase {
+    /// Finding the zlib streams; counted in bytes of the archive.
+    Carving,
+    /// Reading the names resources carry; counted in resources.
+    Naming,
+}
+
 /// Reads the header of the RPF9 archive at `path`.
 pub fn read_header(path: &Path) -> Result<ArchiveHeader> {
     let header = rpf9::read_header(path)?;
@@ -117,18 +147,36 @@ pub fn read_header(path: &Path) -> Result<ArchiveHeader> {
     })
 }
 
-/// Scans the archive at `path` for resources.
+/// Scans the archive at `path` for resources and the names they carry.
 ///
 /// `archive_id` names the archive in the cache (its path from the game folder, with forward slashes). The scan is
 /// streamed, runs in parallel segments and is cached in `cache_dir`: an interrupted scan resumes, a finished one is
-/// read back until the archive changes. `progress` receives `(bytes done, bytes total)` about twice a second.
+/// read back until the archive changes. `progress` receives `(phase, done, total)` about twice a second.
 pub fn scan_archive(
     path: &Path,
     archive_id: &str,
     cache_dir: &Path,
-    progress: impl Fn(u64, u64) + Send + Sync + 'static,
+    progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
 ) -> Result<ArchiveScan> {
-    let index = scan::build_index(path, archive_id, cache_dir, false, Some(Arc::new(progress)))?;
+    let progress = Arc::new(progress);
+    let carving = Arc::clone(&progress);
+    let mut index = scan::build_index(
+        path,
+        archive_id,
+        cache_dir,
+        false,
+        Some(Arc::new(move |done, total| carving(ScanPhase::Carving, done, total))),
+    )?;
+    if !index.names_done {
+        let naming = Arc::clone(&progress);
+        export::recover_names(
+            path,
+            &mut index,
+            Arc::new(move |_, done, total| naming(ScanPhase::Naming, done, total)),
+        )?;
+        scan::save_index(cache_dir, &index)?;
+    }
+
     let entries = index
         .entries
         .into_iter()
@@ -139,6 +187,8 @@ pub fn scan_archive(
             kind: entry.kind.into(),
             sub_type: entry.sub,
             extension: entry.ext,
+            name: entry.name,
+            resource_type: entry.rtype,
         })
         .collect();
     Ok(ArchiveScan {
@@ -149,54 +199,10 @@ pub fn scan_archive(
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
     use std::path::PathBuf;
-
-    use flate2::Compression;
-    use flate2::write::ZlibEncoder;
+    use std::sync::Mutex;
 
     use super::*;
-
-    const TOC_END: usize = 0x140;
-
-    fn zlib(bytes: &[u8]) -> Vec<u8> {
-        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(bytes).unwrap();
-        encoder.finish().unwrap()
-    }
-
-    /// A synthetic RPF9 archive: header, a noise "table of contents", then three zlib streams with gaps between
-    /// them. Returns the archive and the offset of each stream.
-    fn synthetic_archive() -> (Vec<u8>, Vec<u64>) {
-        let mut bytes = vec![0u8; 0x40];
-        bytes[0..4].copy_from_slice(&rpf9::MAGIC.to_le_bytes());
-        bytes[4..8].copy_from_slice(&(TOC_END as u32).to_le_bytes());
-        bytes[0x24..0x28].copy_from_slice(&3u32.to_le_bytes());
-
-        // Xorshift noise stands in for the encrypted table of contents.
-        let mut state = 0x9E37_79B9_u32;
-        bytes.extend((0x40..TOC_END).map(|_| {
-            state ^= state << 13;
-            state ^= state >> 17;
-            state ^= state << 5;
-            state.to_le_bytes()[0]
-        }));
-
-        let mut dds = b"DDS ".to_vec();
-        dds.resize(512, 0);
-        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
-        png.resize(512, 7);
-        let xml = b"<?xml version=\"1.0\"?>\n<vehicles><item>synthetic</item></vehicles>\n".to_vec();
-
-        let mut offsets = Vec::new();
-        for payload in [dds, png, xml] {
-            offsets.push(bytes.len() as u64);
-            bytes.extend(zlib(&payload));
-            // Pad to 16 bytes, plus one empty block so streams are not mistaken for pages of the same resource.
-            bytes.resize(bytes.len().next_multiple_of(16) + 16, 0);
-        }
-        (bytes, offsets)
-    }
 
     fn temp_dir(test: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("openvi-formats-{test}-{}", std::process::id()));
@@ -208,13 +214,13 @@ mod tests {
     fn reads_the_plain_header_and_flags_the_encrypted_toc() {
         let dir = temp_dir("header");
         let archive = dir.join("common.rpf");
-        std::fs::write(&archive, synthetic_archive().0).unwrap();
+        std::fs::write(&archive, fixtures::archive().0).unwrap();
         let result = read_header(&archive);
         std::fs::remove_dir_all(&dir).unwrap();
 
         let header = result.unwrap();
-        assert_eq!(header.data_start, TOC_END as u64);
-        assert_eq!(header.entry_count, 3);
+        assert_eq!(header.data_start, fixtures::DATA_START);
+        assert_eq!(header.entry_count, 4);
         assert!(header.toc_encrypted);
     }
 
@@ -230,12 +236,18 @@ mod tests {
     }
 
     #[test]
-    fn carves_resources_from_the_data_area_by_kind() {
+    fn carves_resources_by_kind_and_recovers_their_names() {
         let dir = temp_dir("scan");
         let archive = dir.join("common.rpf");
-        let (bytes, offsets) = synthetic_archive();
+        let (bytes, offsets) = fixtures::archive();
         std::fs::write(&archive, bytes).unwrap();
-        let result = scan_archive(&archive, "common.rpf", &dir.join("cache"), |_, _| {});
+        let phases = Arc::new(Mutex::new(Vec::new()));
+        let seen = Arc::clone(&phases);
+        let result = scan_archive(&archive, "common.rpf", &dir.join("cache"), move |phase, _, _| {
+            seen.lock().unwrap().push(phase);
+        });
+        // A second scan is read back from the cache, names included.
+        let cached = scan_archive(&archive, "common.rpf", &dir.join("cache"), |_, _, _| {});
         std::fs::remove_dir_all(&dir).unwrap();
 
         let scan = result.unwrap();
@@ -246,9 +258,18 @@ mod tests {
                 (offsets[0], ResourceKind::Dds),
                 (offsets[1], ResourceKind::Png),
                 (offsets[2], ResourceKind::Xml),
+                (offsets[3], ResourceKind::RageObject),
             ]
         );
         assert_eq!(scan.entries[0].size, 512);
         assert!(scan.coverage > 0.0 && scan.coverage < 1.0);
+
+        let object = &scan.entries[3];
+        assert_eq!(object.name.as_deref(), Some(fixtures::OBJECT_NAME));
+        assert_eq!(object.type_name(), "Fragment");
+        assert_eq!(scan.entries[0].type_name(), "DDS Texture");
+        assert!(phases.lock().unwrap().contains(&ScanPhase::Naming));
+
+        assert_eq!(cached.unwrap().entries[3].name.as_deref(), Some(fixtures::OBJECT_NAME));
     }
 }

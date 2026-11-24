@@ -14,6 +14,11 @@ anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 # Pinned to one commit: SixNG changes several times an hour. `default-features = false` drops libopus (and CMake).
 sixng-core = { git = "https://github.com/holdmysocks/SixNG", rev = "13de59331918ec0d426fca685a1fbbf434c5a6f5", default-features = false }
+flate2 = { version = "1", optional = true }
+
+[features]
+# Synthetic archives for the tests of crates that use this one.
+fixtures = ["dep:flate2"]
 
 [dev-dependencies]
 flate2 = "1"
