@@ -15,7 +15,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rayon = "1"
 # Pinned to one commit: SixNG changes several times an hour. `default-features = false` drops libopus (and CMake).
-sixng-core = { git = "https://github.com/holdmysocks/SixNG", rev = "13de59331918ec0d426fca685a1fbbf434c5a6f5", default-features = false }
+sixng-core = { git = "https://github.com/holdmysocks/SixNG", rev = "e46a7f81053ced73e253cb693bde383efe86aa3f", default-features = false }
 flate2 = { version = "1", optional = true }
 # PNG previews of decoded textures (the version and features sixng-core uses).
 image = { version = "0.25", default-features = false, features = ["png"] }

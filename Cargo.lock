@@ -3578,7 +3578,7 @@ checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
 [[package]]
 name = "sixng-core"
 version = "0.8.0"
-source = "git+https://github.com/holdmysocks/SixNG?rev=13de59331918ec0d426fca685a1fbbf434c5a6f5#13de59331918ec0d426fca685a1fbbf434c5a6f5"
+source = "git+https://github.com/holdmysocks/SixNG?rev=e46a7f81053ced73e253cb693bde383efe86aa3f#e46a7f81053ced73e253cb693bde383efe86aa3f"
 dependencies = [
  "anyhow",
  "bcpack-rs",

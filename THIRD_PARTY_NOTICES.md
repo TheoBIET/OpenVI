@@ -5,7 +5,7 @@ OpenVI is licensed under the GNU General Public License v3.0 only (see `LICENSE`
 ## SixNG (`sixng-core`)
 
 Format decoders for GTA VI files, linked by `crates/openvi-formats` (the only caller). <https://github.com/holdmysocks/SixNG>,
-pinned to commit `13de59331918ec0d426fca685a1fbbf434c5a6f5`, built without its `opus-decode` feature. Licensed
+pinned to commit `e46a7f81053ced73e253cb693bde383efe86aa3f`, built without its `opus-decode` feature. Licensed
 under the GNU General Public License v3.0 only. Its own notices (AMD addrlib, MIT) are in its
 `THIRD_PARTY_NOTICES.md`.
 
