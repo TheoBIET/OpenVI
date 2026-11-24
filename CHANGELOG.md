@@ -2,6 +2,13 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.13.1 (2026-11-25)
+
+- Website: a presentation page on GitHub Pages (`apps/site`, deployed by the `Pages` workflow): what OpenVI does,
+  its status, downloads and building from source.
+- The visual identity (fonts, colour tokens, accent utilities) moves to `packages/theme`, shared by the app and the
+  website.
+
 ## 0.13.0 (2026-11-24)
 
 - Animations: a new clip no longer reassembles the character. The character is assembled once; each clip is exported
