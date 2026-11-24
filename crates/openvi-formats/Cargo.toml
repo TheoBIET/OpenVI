@@ -1,0 +1,19 @@
+[package]
+name = "openvi-formats"
+version = "0.1.0"
+description = "OpenVI's formats adapter: the only caller of sixng-core"
+authors = ["Théo BIET"]
+license = "GPL-3.0-only"
+repository = "https://github.com/TheoBIET/OpenVI"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+# Pinned to one commit: SixNG changes several times an hour. `default-features = false` drops libopus (and CMake).
+sixng-core = { git = "https://github.com/holdmysocks/SixNG", rev = "13de59331918ec0d426fca685a1fbbf434c5a6f5", default-features = false }
+
+[dev-dependencies]
+flate2 = "1"
