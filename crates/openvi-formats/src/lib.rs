@@ -310,6 +310,12 @@ pub fn resource_text(
     Ok(TextPreview { text, truncated })
 }
 
+/// The bytes of the resource at `offset`, inflated (all its streams, in order): what an export writes as is.
+pub fn resource_bytes(path: &Path, archive_id: &str, cache_dir: &Path, offset: u64) -> Result<Vec<u8>> {
+    let entry = cached_entry(archive_id, cache_dir, offset)?;
+    scan::read_entry(path, &entry)
+}
+
 /// The bytes of the PNG image resource at `offset`, as stored.
 pub fn resource_png(path: &Path, archive_id: &str, cache_dir: &Path, offset: u64) -> Result<Vec<u8>> {
     let entry = cached_entry(archive_id, cache_dir, offset)?;
@@ -513,5 +519,18 @@ mod tests {
         let png = png.unwrap();
         assert!(png.starts_with(b"\x89PNG") && png.len() == 512);
         assert!(xml.is_err());
+    }
+
+    #[test]
+    fn reads_any_resource_inflated() {
+        let (dir, archive, offsets) = scanned("bytes");
+        let xml = resource_bytes(&archive, "common.rpf", &dir.join("cache"), offsets[2]);
+        let dictionary = resource_bytes(&archive, "common.rpf", &dir.join("cache"), offsets[4]);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        assert!(xml.unwrap().starts_with(b"<?xml"));
+        // Both pages of the texture dictionary: the 0x400-byte system page, then the pixels.
+        let size = usize::from(fixtures::TEXTURE_SIZE);
+        assert_eq!(dictionary.unwrap().len(), 0x400 + size * size * 4);
     }
 }
