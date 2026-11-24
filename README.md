@@ -46,7 +46,7 @@ It runs on Windows, macOS and Linux.
 ```mermaid
 flowchart LR
   install["Your GTA VI install<br/>(folders, RPF9 archives)"] --> backend["Rust backend<br/>(Tauri commands)"]
-  backend --> decoders["sixng-core<br/>(format decoders, planned)"]
+  backend --> decoders["sixng-core<br/>(format decoders)"]
   decoders --> index[("Local index<br/>SQLite + full-text search")]
   backend --> ui["React UI<br/>explorer, viewers, search"]
   index --> ui
@@ -101,7 +101,7 @@ negotiable. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). Security is
 ## Acknowledgements
 
 OpenVI stands on the research of the GTA VI reverse-engineering community, in particular
-[SixNG](https://github.com/holdmysocks/SixNG) (format decoders, planned as OpenVI's core),
+[SixNG](https://github.com/holdmysocks/SixNG) (format decoders, OpenVI's core),
 [bcpack-rs](https://github.com/Ahmet-Dedeler/bcpack-rs),
 [GTA6-Asset-Info](https://github.com/TrinitronClient/GTA6-Asset-Info) and the list at
 [awesome-gta6-reverse-engineering](https://github.com/Ahmet-Dedeler/awesome-gta6-reverse-engineering).

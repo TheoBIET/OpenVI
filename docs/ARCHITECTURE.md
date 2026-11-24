@@ -12,7 +12,7 @@ flowchart TB
   end
   subgraph backend["Rust backend (apps/desktop/src-tauri)"]
     fs["fs: list_dir<br/>confined to the opened folder"]
-    adapter["formats adapter (planned)<br/>the only caller of sixng-core"]
+    adapter["openvi-formats crate<br/>the only caller of sixng-core"]
     indexer["indexer (planned)"]
   end
   sixng["sixng-core<br/>GPL-3.0-only"]
@@ -57,3 +57,16 @@ plain zlib; the index is encrypted, and OpenVI does not decrypt it ([LEGAL.md](L
 `list_dir(root, path)` returns the entries of one folder (folders, then `.rpf` archives, then other files), the
 breadcrumb from the opened folder down, and each folder's item count. The backend canonicalises both paths and
 refuses any path outside the opened folder. Symbolic links and dot-files are left out.
+
+## Formats adapter
+
+`crates/openvi-formats` is the only crate that depends on `sixng-core` (pinned to one commit, without libopus). It
+exposes its own types, so a SixNG update stops there:
+
+- `read_header(path)`: the plain part of an RPF9 header (where the data starts, announced entry count, whether the
+  table of contents looks encrypted).
+- `scan_archive(path, archive_id, cache_dir, progress)`: carves the zlib streams of the data area into
+  `ArchiveEntry` values (offset, sizes, `ResourceKind`). The scan is streamed, runs in parallel 256 MiB segments,
+  checkpoints each segment in `cache_dir` and is read back from there until the archive changes.
+
+Names (hash → name) and resource decoding come with the archive view.
