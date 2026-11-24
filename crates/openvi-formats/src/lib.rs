@@ -308,6 +308,16 @@ pub fn resource_text(
     Ok(TextPreview { text, truncated })
 }
 
+/// The bytes of the PNG image resource at `offset`, as stored.
+pub fn resource_png(path: &Path, archive_id: &str, cache_dir: &Path, offset: u64) -> Result<Vec<u8>> {
+    let entry = cached_entry(archive_id, cache_dir, offset)?;
+    anyhow::ensure!(
+        entry.kind == classify::Kind::Png,
+        "the resource at {offset:#x} is not a PNG image"
+    );
+    scan::read_entry(path, &entry)
+}
+
 /// Texture `index` of the resource at `offset`, decoded to PNG. Uses the largest mip that fits in `max_size` pixels
 /// a side, when the texture has one; otherwise the full-size image.
 pub fn texture_png(
@@ -489,5 +499,17 @@ mod tests {
         let cut = cut.unwrap();
         assert_eq!((cut.text.as_str(), cut.truncated), ("<?xml vers", true));
         assert!(texture.is_err());
+    }
+
+    #[test]
+    fn reads_png_resources_as_stored() {
+        let (dir, archive, offsets) = scanned("png");
+        let png = resource_png(&archive, "common.rpf", &dir.join("cache"), offsets[1]);
+        let xml = resource_png(&archive, "common.rpf", &dir.join("cache"), offsets[2]);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let png = png.unwrap();
+        assert!(png.starts_with(b"\x89PNG") && png.len() == 512);
+        assert!(xml.is_err());
     }
 }
