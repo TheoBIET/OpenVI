@@ -23,6 +23,6 @@ Tauri 2 app, Rust backend, React 19 + Tailwind 4 UI, pnpm + turbo monorepo.
   viewers (properties panel, document view, 3D view).
 - **One door to the formats.** All game-format decoding goes through the backend's formats adapter, the only caller
   of `sixng-core`.
-- **Visual identity** follows `docs/PRODUCT.md`; colours come from the tokens in `src/styles.css`.
+- **Visual identity** follows `docs/PRODUCT.md`; colours come from the tokens in `packages/theme/theme.css`.
 - English for code, comments, docs and commits. Commits follow the `gitmoji` skill.
 - Done means `pnpm format:check`, `pnpm lint`, `pnpm check-types`, clippy and `cargo test` all pass.

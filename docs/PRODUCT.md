@@ -21,7 +21,7 @@ workbench**. The explorer is the product's backbone; every other feature is a vi
 
 - A searchable index across all archives, and diffs between game versions ("what changed in this update").
 - A map viewer in the spirit of CodeWalker.
-- A GitHub Pages site: a landing page with downloads, possibly a generated catalog (names, hashes, categories:
+- On the GitHub Pages site (`apps/site`, a presentation page today): a generated catalog (names, hashes, categories:
   facts only, never assets).
 - Modding through a PC compatibility layer's file overlay. Rewriting RPF9 archives is out of reach: their table of
   contents is encrypted.
@@ -45,7 +45,8 @@ workbench**. The explorer is the product's backbone; every other feature is a vi
 - Loading never blanks what is on screen and never moves the layout: content being replaced stays, blurred under a
   spinner (`BusyOverlay`); content not there yet has a skeleton of its final size (`components/skeleton.tsx`). 3D
   views are double-buffered (`useBufferedScene`).
-- Tokens live in `apps/desktop/src/styles.css`; Monaco's theme (`src/lib/monaco.ts`) repeats them.
+- Tokens, fonts and accent utilities live in `packages/theme/theme.css` (`@openvi/theme`), shared by the app and the
+  website; Monaco's theme (`apps/desktop/src/lib/monaco.ts`) repeats them.
 - Type: Barlow (400–700) for all text, 14 px, line height 1.5; Barlow Condensed 700 for page titles and the logo
   (`font-display`: uppercase, 0.01em tracking, 0.95 line height); Barlow 600 for section titles (`font-title`); Geist
   Mono for code, identifiers, offsets and hashes (`font-mono`). Fonts are bundled (Fontsource), never fetched.

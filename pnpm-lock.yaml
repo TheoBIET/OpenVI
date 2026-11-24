@@ -190,15 +190,9 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@fontsource-variable/geist-mono':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource/barlow':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource/barlow-condensed':
-        specifier: 5.3.0
-        version: 5.3.0
+      '@openvi/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@tauri-apps/api':
         specifier: ^2.12.5
         version: 2.12.5
@@ -254,6 +248,37 @@ importers:
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)
+
+  apps/site:
+    dependencies:
+      '@openvi/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.3.5
+        version: 4.3.5(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))
+      lucide-static:
+        specifier: 1.77.0
+        version: 1.77.0
+      tailwindcss:
+        specifier: ^4.3.5
+        version: 4.3.5
+      vite:
+        specifier: ^8.3.8
+        version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)
+
+  packages/theme:
+    dependencies:
+      '@fontsource-variable/geist-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/barlow':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/barlow-condensed':
+        specifier: 5.3.0
+        version: 5.3.0
 
   packages/typescript: {}
 
@@ -1187,6 +1212,9 @@ packages:
       '@types/react':
         optional: true
 
+  lucide-static@1.77.0:
+    resolution: {integrity: sha512-v+BzpQrjlwDRWPDzzAu5IFhOkI6jVKb91fsjw1ZSS7Tsb2YvRX5olRN0DXGW99LF2wV4fycuTf5aPOMC62ZW0g==}
+
   magic-string@1.4.5:
     resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
 
@@ -1921,6 +1949,8 @@ snapshots:
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
+
+  lucide-static@1.77.0: {}
 
   magic-string@1.4.5:
     dependencies:
