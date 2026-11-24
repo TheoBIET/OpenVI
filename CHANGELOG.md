@@ -2,6 +2,13 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.6.2 (2026-11-24)
+
+- Model textures come from the texture stores (`data/ttdb/*.ttpf`), not the archives: model exports are redone when a
+  store changes, so a model exported while its store was missing or downloading gets its textures later.
+- Materials panel in the 3D view: every material with its texture slots, role, size, status and thumbnail; a texture
+  "not in any ttpf store" means its store is missing or incomplete (restart OpenVI once it is downloaded).
+
 ## 0.6.1 (2026-11-24)
 
 - 3D models show their textures: they all failed to load before, and models looked white.
