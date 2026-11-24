@@ -40,6 +40,8 @@ workbench**. The explorer is the product's backbone; every other feature is a vi
   audience: Vehicles, Characters, Weapons, Animations. Catalogs take the whole width (no folder tree) and open their
   items in the same viewers as the explorer.
 - The 3D view plays the animations a model carries (clip, play and pause, time line, speed).
+- Everywhere, a click selects and the right-hand pane previews the selection (a 3D model turns slowly); its Open
+  button, or a double-click, opens the item on its own in place of the list.
 - Tokens live in `apps/desktop/src/styles.css`; Monaco's theme (`src/lib/monaco.ts`) repeats them.
 - Type: Barlow (400–700) for all text, 14 px, line height 1.5; Barlow Condensed 700 for page titles and the logo
   (`font-display`: uppercase, 0.01em tracking, 0.95 line height); Barlow 600 for section titles (`font-title`); Geist

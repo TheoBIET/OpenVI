@@ -2,6 +2,12 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.10.0 (2026-11-24)
+
+- Preview pane on the right everywhere: a click selects and previews (folders and archives, loose text and image
+  files, resources with their 3D model turning, text, image or textures, vehicles and characters with their data and
+  model); the pane's Open button opens the item on its own, as a double-click does.
+
 ## 0.9.0 (2026-11-24)
 
 - Animations section: the clip dictionaries of `anim.rpf` (filter by name), the clips of the one picked, and the clip
