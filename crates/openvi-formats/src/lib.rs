@@ -10,9 +10,12 @@ pub mod fixtures;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use image::codecs::png::PngEncoder;
+use image::{ExtendedColorType, ImageEncoder};
 use serde::Serialize;
-use sixng_core::{classify, export, rpf9, scan};
+use sixng_core::resource::Resource;
+use sixng_core::{classify, export, rpf9, scan, texture};
 
 /// The plain part of an RPF9 header.
 #[derive(Debug, Clone, Serialize)]
@@ -177,10 +180,16 @@ pub fn scan_archive(
         scan::save_index(cache_dir, &index)?;
     }
 
-    let entries = index
-        .entries
-        .into_iter()
-        .map(|entry| ArchiveEntry {
+    let entries = index.entries.into_iter().map(ArchiveEntry::from).collect();
+    Ok(ArchiveScan {
+        entries,
+        coverage: index.stats.coverage,
+    })
+}
+
+impl From<scan::Entry> for ArchiveEntry {
+    fn from(entry: scan::Entry) -> Self {
+        Self {
             offset: entry.off,
             compressed_size: entry.csize,
             size: entry.usize,
@@ -189,12 +198,116 @@ pub fn scan_archive(
             extension: entry.ext,
             name: entry.name,
             resource_type: entry.rtype,
-        })
-        .collect();
-    Ok(ArchiveScan {
-        entries,
-        coverage: index.stats.coverage,
+        }
+    }
+}
+
+/// One texture found in a resource (a texture dictionary, or a model's embedded textures).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureInfo {
+    /// Position among the resource's textures: the handle [`texture_png`] takes.
+    pub index: usize,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub mips: u32,
+    /// DXGI format name, such as `BC7_UNORM`.
+    pub format: String,
+}
+
+/// What the properties panel shows for one resource.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceDetails {
+    #[serde(flatten)]
+    pub entry: ArchiveEntry,
+    pub type_name: &'static str,
+    /// Number of zlib streams the resource spans.
+    pub streams: usize,
+    pub textures: Vec<TextureInfo>,
+}
+
+/// The cached scan entry of the resource at `offset`. The archive must have been scanned with [`scan_archive`].
+fn cached_entry(archive_id: &str, cache_dir: &Path, offset: u64) -> Result<scan::Entry> {
+    let index = scan::load_index(&scan::index_path(cache_dir, archive_id))
+        .with_context(|| format!("{archive_id} has not been scanned yet"))?;
+    index
+        .entries
+        .into_iter()
+        .find(|entry| entry.off == offset)
+        .with_context(|| format!("no resource at {offset:#x} in {archive_id}"))
+}
+
+/// Resources whose pages may hold textures: dictionaries, and models with embedded ones.
+fn may_hold_textures(entry: &scan::Entry) -> bool {
+    matches!(entry.kind, classify::Kind::Resource | classify::Kind::RageObj)
+        && matches!(entry.rtype.as_deref(), Some("txd" | "td" | "dr" | "ft" | "dd"))
+}
+
+/// Details of the resource at `offset` in the archive at `path`, including the textures it holds.
+pub fn resource_details(path: &Path, archive_id: &str, cache_dir: &Path, offset: u64) -> Result<ResourceDetails> {
+    let entry = cached_entry(archive_id, cache_dir, offset)?;
+    let textures = if may_hold_textures(&entry) {
+        let resource = Resource::load(path, &entry)?;
+        texture::find_textures(&resource)
+            .into_iter()
+            .enumerate()
+            .map(|(index, info)| TextureInfo {
+                index,
+                name: info.name,
+                width: info.width,
+                height: info.height,
+                mips: info.mips,
+                format: info.format,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let streams = entry.streams.len();
+    let entry = ArchiveEntry::from(entry);
+    Ok(ResourceDetails {
+        type_name: entry.type_name(),
+        entry,
+        streams,
+        textures,
     })
+}
+
+/// Texture `index` of the resource at `offset`, decoded to PNG. Uses the largest mip that fits in `max_size` pixels
+/// a side, when the texture has one; otherwise the full-size image.
+pub fn texture_png(
+    path: &Path,
+    archive_id: &str,
+    cache_dir: &Path,
+    offset: u64,
+    index: usize,
+    max_size: u32,
+) -> Result<Vec<u8>> {
+    let entry = cached_entry(archive_id, cache_dir, offset)?;
+    let resource = Resource::load(path, &entry)?;
+    let info = texture::find_textures(&resource)
+        .into_iter()
+        .nth(index)
+        .with_context(|| format!("no texture {index} in the resource at {offset:#x}"))?;
+
+    let mut mip = 0;
+    while info.width.max(info.height) >> mip > max_size && mip + 1 < texture::exportable_mips(&info) {
+        mip += 1;
+    }
+    let (format, data, width, height) = if mip == 0 {
+        // One-row textures (tint palettes) are stored linear.
+        let (format, data) = texture::mip0_linear(&resource, &info, info.height == 1)?;
+        (format, data, info.width, info.height)
+    } else {
+        texture::mip_linear(&resource, &info, mip)?
+    };
+    let rgba = texture::to_rgba(format, &data, width, height)?;
+
+    let mut png = Vec::new();
+    PngEncoder::new(&mut png).write_image(&rgba, width, height, ExtendedColorType::Rgba8)?;
+    Ok(png)
 }
 
 #[cfg(test)]
@@ -259,6 +372,7 @@ mod tests {
                 (offsets[1], ResourceKind::Png),
                 (offsets[2], ResourceKind::Xml),
                 (offsets[3], ResourceKind::RageObject),
+                (offsets[4], ResourceKind::RageObject),
             ]
         );
         assert_eq!(scan.entries[0].size, 512);
@@ -267,9 +381,64 @@ mod tests {
         let object = &scan.entries[3];
         assert_eq!(object.name.as_deref(), Some(fixtures::OBJECT_NAME));
         assert_eq!(object.type_name(), "Fragment");
+        let dictionary = &scan.entries[4];
+        assert_eq!(dictionary.name.as_deref(), Some(fixtures::DICTIONARY_NAME));
+        assert_eq!(dictionary.type_name(), "Texture Dictionary");
         assert_eq!(scan.entries[0].type_name(), "DDS Texture");
         assert!(phases.lock().unwrap().contains(&ScanPhase::Naming));
 
         assert_eq!(cached.unwrap().entries[3].name.as_deref(), Some(fixtures::OBJECT_NAME));
+    }
+
+    /// A scanned copy of the synthetic archive; returns its folder (to delete), path and resource offsets.
+    fn scanned(test: &str) -> (PathBuf, PathBuf, Vec<u64>) {
+        let dir = temp_dir(test);
+        let archive = dir.join("common.rpf");
+        let (bytes, offsets) = fixtures::archive();
+        std::fs::write(&archive, bytes).unwrap();
+        scan_archive(&archive, "common.rpf", &dir.join("cache"), |_, _, _| {}).unwrap();
+        (dir, archive, offsets)
+    }
+
+    #[test]
+    fn details_list_the_textures_a_dictionary_holds() {
+        let (dir, archive, offsets) = scanned("details");
+        let dictionary = resource_details(&archive, "common.rpf", &dir.join("cache"), offsets[4]);
+        let xml = resource_details(&archive, "common.rpf", &dir.join("cache"), offsets[2]);
+        let missing = resource_details(&archive, "common.rpf", &dir.join("cache"), 0x42);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let dictionary = dictionary.unwrap();
+        assert_eq!(dictionary.type_name, "Texture Dictionary");
+        assert_eq!(dictionary.streams, 2);
+        let size = u32::from(fixtures::TEXTURE_SIZE);
+        assert_eq!(
+            dictionary.textures,
+            [TextureInfo {
+                index: 0,
+                name: fixtures::TEXTURE_NAME.into(),
+                width: size,
+                height: size,
+                mips: 1,
+                format: "B8G8R8A8_UNORM".into(),
+            }]
+        );
+        assert!(xml.unwrap().textures.is_empty());
+        assert!(missing.is_err());
+    }
+
+    #[test]
+    fn decodes_a_texture_to_png() {
+        let (dir, archive, offsets) = scanned("texture");
+        let png = texture_png(&archive, "common.rpf", &dir.join("cache"), offsets[4], 0, 1024);
+        let absent = texture_png(&archive, "common.rpf", &dir.join("cache"), offsets[4], 1, 1024);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let image = image::load_from_memory(&png.unwrap()).unwrap().to_rgba8();
+        let size = u32::from(fixtures::TEXTURE_SIZE);
+        assert_eq!(image.dimensions(), (size, size));
+        let [blue, green, red, alpha] = fixtures::TEXTURE_BGRA;
+        assert!(image.pixels().all(|pixel| pixel.0 == [red, green, blue, alpha]));
+        assert!(absent.is_err());
     }
 }
