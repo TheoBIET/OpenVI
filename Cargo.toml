@@ -1,5 +1,5 @@
 [workspace]
-members = ["apps/desktop/src-tauri", "crates/openvi-formats"]
+members = ["apps/desktop/src-tauri", "crates/openvi-formats", "crates/openvi-index"]
 resolver = "3"
 
 # Archive scans inflate gigabytes: keep the decoders fast in `pnpm dev` too.

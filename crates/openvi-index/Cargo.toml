@@ -1,0 +1,17 @@
+[package]
+name = "openvi-index"
+version = "0.1.0"
+description = "OpenVI's local index: the resources of every scanned archive, searchable by name"
+authors = ["Théo BIET"]
+license = "GPL-3.0-only"
+repository = "https://github.com/TheoBIET/OpenVI"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[dependencies]
+anyhow = "1"
+openvi-formats = { path = "../openvi-formats" }
+# Bundled SQLite: same version and FTS5 (trigram tokenizer) on every OS.
+rusqlite = { version = "0.43", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
