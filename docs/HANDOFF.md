@@ -113,6 +113,9 @@ carver cannot see, folders counted in the header, or the missing parts above.
 - He judges the UI by eye: keep it a dense desktop explorer (see [PRODUCT.md](PRODUCT.md#visual-identity)).
 - Commits follow the `gitmoji` skill. In this repository he allows `Co-Authored-By` trailers, unlike the skill's
   default.
+- Commit after each working step, and version as you go: bump the version in `package.json`, `apps/desktop/package.json`,
+  `tauri.conf.json` and the `Cargo.toml` files, add a `CHANGELOG.md` entry and an annotated `vX.Y.Z` tag (minor per
+  feature, patch per fix). Tags stay local: pushing a `v*` tag runs the release workflow, so only he pushes them.
 
 ## Suggested skills
 
