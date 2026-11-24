@@ -146,3 +146,18 @@ rebuilds the index, which is only a cache of scans.
 The index fills two ways: opening an archive records its scan, and `index_game` scans every `.rpf` of the folder that
 changed since it was indexed, one at a time, emitting `index-progress` events. In the UI, typing in the filter box
 filters the list; Enter searches the whole index, and opening a result opens its archive with the resource selected.
+
+## Performance and progress
+
+- Scan indexes are parsed once and kept in memory (`openvi_formats::index_cache`) until their file changes; an up to
+  date scan returns from there. Every adapter function that needs an index (resource details, model and vehicle
+  exports, characters, clip names, the catalog's handling) reads it through that cache.
+- Exports keep decoded textures: a character's looks and clips share `<cache>/work/characters/<sources>/<name>/`, a
+  vehicle's configurations `<cache>/work/vehicles/<sources>/<model>/`, models `<cache>/work/models/<sources>/`; SixNG
+  runs without `force`, which it gets only when that left no GLB.
+- Every dependency is optimised in dev builds (`[profile.dev.package."*"]`), since `pnpm dev` is a debug build.
+- Long operations behind the sections report each step as `catalog-progress` (`progress.rs`: label, count, bytes or
+  items); a scan waiting for the same archive's scan started elsewhere says so (`scans::scan_reported`). The frontend
+  shows a filled bar for a counted step and a sweeping bar otherwise (`LoadingPanel.tsx`).
+- Windows: `build.rs` embeds tauri-build's manifest (Common Controls 6) in every executable through the linker, so the
+  test executables start.

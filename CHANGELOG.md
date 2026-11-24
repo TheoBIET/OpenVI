@@ -2,6 +2,15 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.12.0 (2026-11-24)
+
+- Faster: scan indexes stay in memory (an archive's index was parsed again, up to hundreds of MB, for every resource
+  opened, model previewed or character assembled); textures decoded for one look, clip or configuration are reused
+  by the next; every dependency is optimised in `pnpm dev`; Monaco and three.js load in the background after start-up.
+- The sections' progress bar follows every step (scans, waiting for a scan started elsewhere, indexing, decoding,
+  listing, reading names, exporting), with a count when there is one and a sweeping bar otherwise.
+- The app's tests start on Windows again (Windows manifest embedded in every executable).
+
 ## 0.11.0 (2026-11-24)
 
 - The model on screen stays while the next one loads: changing parts, configuration, clip or selection keeps it,
