@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { formatOffset, formatSize } from '../lib/format';
 import type { Entry } from '../lib/fs';
 import { archiveOf } from '../lib/index';
-import { type ResourceDetails, resourceInfo, type TextPreview, textPreview, texturePreview } from '../lib/resource';
+import { type ResourceDetails, resourceInfo, texturePreview } from '../lib/resource';
+import { isViewable } from './DocumentView';
 
 type Loaded<T> = { state: 'loading' } | { state: 'ready'; value: T } | { state: 'failed'; error: string };
 
@@ -12,7 +13,6 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
   const [details, setDetails] = useState<Loaded<ResourceDetails>>({ state: 'loading' });
   const [texture, setTexture] = useState(0);
   const [preview, setPreview] = useState<Loaded<string>>({ state: 'loading' });
-  const [text, setText] = useState<Loaded<TextPreview>>({ state: 'loading' });
 
   useEffect(() => {
     let current = true;
@@ -54,29 +54,13 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
     };
   }, [root, entry.path, texture, hasTextures]);
 
-  const kind = details.state === 'ready' ? details.value.kind : null;
-  const isText = kind === 'xml' || kind === 'text';
-
-  useEffect(() => {
-    if (!isText) return;
-    let current = true;
-    setText({ state: 'loading' });
-    textPreview(root, entry.path).then(
-      (value) => current && setText({ state: 'ready', value }),
-      (error: unknown) => current && setText({ state: 'failed', error: String(error) }),
-    );
-    return () => {
-      current = false;
-    };
-  }, [root, entry.path, isText]);
-
   const shown = textures[texture];
   const archive = entry.location ?? archiveOf(entry.path).split(/[\\/]/).at(-1);
 
   return (
     <aside
       aria-label="Properties"
-      className={`flex ${isText ? 'w-[34rem]' : 'w-80'} shrink-0 flex-col overflow-hidden border-l border-ink-800 bg-ink-900`}
+      className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-ink-800 bg-ink-900"
     >
       <header className="border-b border-ink-800 px-3 py-2">
         <h2 className="truncate font-medium text-white" title={entry.name}>
@@ -99,19 +83,10 @@ export function PropertiesPanel({ root, entry }: { root: string; entry: Entry })
           )}
         </dl>
         {details.state === 'failed' && <p className="px-3 py-2 text-xs text-flamingo">{details.error}</p>}
-        {isText && (
-          <section aria-label="Text" className="border-t border-ink-800 px-3 py-2">
-            {text.state === 'loading' && <p className="text-xs text-ink-400">Reading…</p>}
-            {text.state === 'failed' && <p className="text-xs text-flamingo">{text.error}</p>}
-            {text.state === 'ready' && (
-              <>
-                <pre className="overflow-x-auto font-mono text-[11px] leading-4 whitespace-pre text-ink-200 select-text">
-                  {text.value.text}
-                </pre>
-                {text.value.truncated && <p className="mt-2 text-xs text-sunset">Only the first 512 KB are shown.</p>}
-              </>
-            )}
-          </section>
+        {isViewable(entry) && (
+          <p className="border-t border-ink-800 px-3 py-2 text-xs text-ink-400">
+            Double-click or press Enter to open it.
+          </p>
         )}
         {hasTextures && (
           <section aria-label="Textures" className="border-t border-ink-800 px-3 py-2">

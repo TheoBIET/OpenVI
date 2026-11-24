@@ -17,5 +17,7 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_ENV_'],
   build: {
     target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome110' : 'safari16',
+    // Monaco is a few MB, split into chunks loaded on the first opened document; a desktop app reads them from disk.
+    chunkSizeWarningLimit: 4096,
   },
 });

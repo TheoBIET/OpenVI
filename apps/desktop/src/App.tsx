@@ -1,6 +1,7 @@
 import { open } from '@tauri-apps/plugin-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { DocumentView, isViewable } from './components/DocumentView';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
@@ -33,6 +34,9 @@ const lastFolderKey = 'openvi.lastGameFolder';
 
 /** Path of the breadcrumb that stands for search results; it is not a place to navigate to. */
 const searchCrumb = '#search';
+
+/** Path of the breadcrumb that stands for an open document. */
+const viewerCrumb = '#viewer';
 
 type History = { stack: string[]; index: number };
 
@@ -68,6 +72,8 @@ export function App() {
   const [status, setStatus] = useState<IndexStatus | null>(null);
   /** Non-null while an indexing pass runs. */
   const [indexing, setIndexing] = useState<IndexProgress | null>(null);
+  /** A file or resource opened in place of the list. */
+  const [viewer, setViewer] = useState<Entry | null>(null);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
 
@@ -102,6 +108,7 @@ export function App() {
   function show(next: Listing, select: string | null = null) {
     setListing(next);
     setSearch(null);
+    setViewer(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -131,8 +138,9 @@ export function App() {
   }
 
   async function navigate(path: string, select: string | null = null) {
-    if (!root || path === searchCrumb) return;
+    if (!root || path === searchCrumb || path === viewerCrumb) return;
     if (path === listing?.path && !search) {
+      setViewer(null);
       if (select) setSelected(select);
       return;
     }
@@ -146,6 +154,11 @@ export function App() {
   }
 
   async function travel(step: -1 | 1) {
+    // Back from an open document returns to the list it was opened from.
+    if (viewer && step === -1) {
+      setViewer(null);
+      return;
+    }
     // Back from search results returns to the listing they replaced.
     if (search && step === -1) {
       setSearch(null);
@@ -189,6 +202,7 @@ export function App() {
     try {
       const view = await searchIndex(root, query);
       setSearch({ query, ...view });
+      setViewer(null);
       setSelected(null);
       setError(null);
       if (view.truncated) {
@@ -231,6 +245,9 @@ export function App() {
     } else if (entry.location !== undefined) {
       // A search result opens its archive with the resource selected.
       void navigate(archiveOf(entry.path), entry.path);
+    } else if (isViewable(entry)) {
+      setSelected(entry.path);
+      setViewer(entry);
     } else if (entry.kind === 'resource') {
       // The properties panel shows the selected resource.
       setSelected(entry.path);
@@ -262,10 +279,16 @@ export function App() {
   const rootCrumb = listing?.crumbs[0];
   const parent = search ? undefined : listing?.crumbs.at(-2);
   const selectedEntry = entries?.find((entry) => entry.path === selected);
-  const crumbs: Crumb[] =
+  const listCrumbs: Crumb[] =
     search && rootCrumb
       ? [rootCrumb, { name: `Search “${search.query}”`, path: searchCrumb }]
       : (listing?.crumbs ?? []);
+  const crumbs = viewer ? [...listCrumbs, { name: viewer.name, path: viewerCrumb }] : listCrumbs;
+  const goUp = () => {
+    if (viewer) setViewer(null);
+    else if (search) void travel(-1);
+    else if (parent) void navigate(parent.path);
+  };
   let indexText: string | null = null;
   if (indexing) indexText = describeIndexing(indexing);
   else if (status) {
@@ -281,12 +304,12 @@ export function App() {
       <Toolbar
         crumbs={crumbs}
         filter={filter}
-        canBack={search !== null || history.index > 0}
+        canBack={viewer !== null || search !== null || history.index > 0}
         canForward={history.index < history.stack.length - 1}
-        canUp={parent !== undefined}
+        canUp={viewer !== null || parent !== undefined}
         onBack={() => void travel(-1)}
         onForward={() => void travel(1)}
-        onUp={() => parent && void navigate(parent.path)}
+        onUp={goUp}
         onNavigate={(path) => void navigate(path)}
         onFilter={setFilter}
         onSearch={(query) => void runSearch(query)}
@@ -306,21 +329,19 @@ export function App() {
             onNavigate={(path) => void navigate(path)}
             onActivate={activate}
           />
-          {opening ? (
+          {opening && (
             <ScanPanel
               name={opening.split(/[\\/]/).at(-1) ?? opening}
               progress={progress?.archive === opening ? progress : null}
             />
-          ) : (
-            <FileList
-              entries={visible}
-              selected={selected}
-              onSelect={setSelected}
-              onActivate={activate}
-              onUp={() => (search ? void travel(-1) : parent && void navigate(parent.path))}
-            />
           )}
-          {!opening && selectedEntry?.kind === 'resource' && <PropertiesPanel root={root} entry={selectedEntry} />}
+          {!opening && viewer && <DocumentView root={root} entry={viewer} />}
+          {!opening && !viewer && (
+            <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
+          )}
+          {!opening && !viewer && selectedEntry?.kind === 'resource' && (
+            <PropertiesPanel root={root} entry={selectedEntry} />
+          )}
         </div>
       ) : (
         <EmptyState error={error} onOpen={() => void chooseGameFolder()} />
