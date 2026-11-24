@@ -5,7 +5,7 @@ export type Section = 'explorer' | 'vehicles' | 'characters' | 'weapons' | 'anim
 const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }[] = [
   { id: 'explorer', label: 'Explorer', icon: FolderTree, ready: true },
   { id: 'vehicles', label: 'Vehicles', icon: Car, ready: true },
-  { id: 'characters', label: 'Characters', icon: Users, ready: false },
+  { id: 'characters', label: 'Characters', icon: Users, ready: true },
   { id: 'weapons', label: 'Weapons', icon: Crosshair, ready: false },
   { id: 'animations', label: 'Animations', icon: Clapperboard, ready: false },
 ];

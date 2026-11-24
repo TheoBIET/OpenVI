@@ -25,7 +25,7 @@
       "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost blob: data:; worker-src 'self' blob:",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPCACHE/work/models/**", "$APPCACHE/work/vehicles/**"]
+        "scope": ["$APPCACHE/work/models/**", "$APPCACHE/work/vehicles/**", "$APPCACHE/work/characters/**"]
       }
     }
   },

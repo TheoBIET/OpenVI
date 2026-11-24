@@ -69,7 +69,9 @@ fn materials(work: &Path, glb: &Path) -> Result<Vec<MaterialReport>> {
     let work = dunce::canonicalize(work)?;
     let glb = dunce::canonicalize(glb)?;
     ensure!(
-        glb.starts_with(work.join("models")) || glb.starts_with(work.join("vehicles")),
+        ["models", "vehicles", "characters"]
+            .iter()
+            .any(|folder| glb.starts_with(work.join(folder))),
         "{} is not a model export",
         glb.display()
     );

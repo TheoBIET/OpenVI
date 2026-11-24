@@ -1,6 +1,8 @@
 import { open } from '@tauri-apps/plugin-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { CharacterPreview } from './components/CharacterPreview';
+import { CharactersView } from './components/CharactersView';
 import { DocumentView, isViewable } from './components/DocumentView';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
@@ -13,6 +15,7 @@ import { Toolbar } from './components/Toolbar';
 import { VehiclePreview } from './components/VehiclePreview';
 import { VehiclesView } from './components/VehiclesView';
 import type { Vehicle } from './lib/catalog';
+import type { Character } from './lib/characters';
 import {
   type Crumb,
   type Entry,
@@ -47,6 +50,10 @@ const vehiclesCrumb = '#vehicles';
 
 /** Path of the breadcrumb that stands for the vehicle shown in 3D. */
 const vehicleCrumb = '#vehicle';
+
+/** Paths of the breadcrumbs that stand for the character list and the character shown in 3D. */
+const charactersCrumb = '#characters';
+const characterCrumb = '#character';
 
 type History = { stack: string[]; index: number };
 
@@ -90,6 +97,10 @@ export function App() {
   const setVehiclesOpen = (open: boolean) => setSection(open ? 'vehicles' : 'explorer');
   /** A vehicle of the catalog shown in 3D. */
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  /** A character of the Characters section shown in 3D. */
+  const [character, setCharacter] = useState<Character | null>(null);
+  /** In a catalog section rather than the explorer. */
+  const inCatalog = section !== 'explorer';
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
   /** The archive being opened, for the progress listener (which outlives renders). */
@@ -133,6 +144,7 @@ export function App() {
     setViewer(null);
     setVehiclesOpen(false);
     setVehicle(null);
+    setCharacter(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -163,7 +175,16 @@ export function App() {
 
   async function navigate(path: string, select: string | null = null) {
     if (path === vehiclesCrumb) setVehicle(null);
-    if (!root || path === searchCrumb || path === viewerCrumb || path === vehiclesCrumb || path === vehicleCrumb)
+    if (path === charactersCrumb) setCharacter(null);
+    if (
+      !root ||
+      path === searchCrumb ||
+      path === viewerCrumb ||
+      path === vehiclesCrumb ||
+      path === vehicleCrumb ||
+      path === charactersCrumb ||
+      path === characterCrumb
+    )
       return;
     if (path === listing?.path && !search) {
       setViewer(null);
@@ -190,7 +211,11 @@ export function App() {
       setVehicle(null);
       return;
     }
-    if (vehiclesOpen && step === -1) {
+    if (character && step === -1) {
+      setCharacter(null);
+      return;
+    }
+    if (inCatalog && step === -1) {
       setVehiclesOpen(false);
       return;
     }
@@ -329,10 +354,15 @@ export function App() {
   if (vehiclesOpen && rootCrumb && vehicle) {
     crumbs = [...crumbs, { name: vehicle.displayName ?? vehicle.model ?? vehicle.modelHash, path: vehicleCrumb }];
   }
+  if (section === 'characters' && rootCrumb) {
+    crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
+    if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
+  }
   const goUp = () => {
     if (viewer) setViewer(null);
-    else if (vehicle) setVehicle(null);
-    else if (vehiclesOpen) setVehiclesOpen(false);
+    else if (vehicle && vehiclesOpen) setVehicle(null);
+    else if (character && section === 'characters') setCharacter(null);
+    else if (inCatalog) setVehiclesOpen(false);
     else if (search) void travel(-1);
     else if (parent) void navigate(parent.path);
   };
@@ -351,9 +381,9 @@ export function App() {
       <Toolbar
         crumbs={crumbs}
         filter={filter}
-        canBack={vehiclesOpen || viewer !== null || search !== null || history.index > 0}
+        canBack={inCatalog || viewer !== null || search !== null || history.index > 0}
         canForward={history.index < history.stack.length - 1}
-        canUp={vehiclesOpen || viewer !== null || parent !== undefined}
+        canUp={inCatalog || viewer !== null || parent !== undefined}
         onBack={() => void travel(-1)}
         onForward={() => void travel(1)}
         onUp={goUp}
@@ -408,10 +438,16 @@ export function App() {
               }}
             />
           )}
-          {!opening && !viewer && !vehiclesOpen && (
+          {!opening && !viewer && section === 'characters' && !character && (
+            <CharactersView root={root} filter={filter} onOpen={setCharacter} />
+          )}
+          {!opening && !viewer && section === 'characters' && character && (
+            <CharacterPreview root={root} character={character} />
+          )}
+          {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}
-          {!opening && !viewer && !vehiclesOpen && selectedEntry?.kind === 'resource' && (
+          {!opening && !viewer && !inCatalog && selectedEntry?.kind === 'resource' && (
             <PropertiesPanel root={root} entry={selectedEntry} />
           )}
         </div>

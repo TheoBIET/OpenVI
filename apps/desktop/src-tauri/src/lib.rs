@@ -2,6 +2,7 @@
 
 mod archive;
 mod catalog;
+mod characters;
 mod export;
 mod file;
 mod fs;
@@ -33,6 +34,9 @@ pub fn run() {
             model::model_preview,
             model::vehicle_preview,
             model::model_materials,
+            characters::characters,
+            characters::character_part_list,
+            characters::character_preview,
             export::save_resource,
             export::save_texture,
             export::save_model
