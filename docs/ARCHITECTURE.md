@@ -58,6 +58,12 @@ plain zlib; the index is encrypted, and OpenVI does not decrypt it ([LEGAL.md](L
 breadcrumb from the opened folder down, and each folder's item count. The backend canonicalises both paths and
 refuses any path outside the opened folder. Symbolic links and dot-files are left out.
 
+`open_archive(root, path)` returns the same `Listing` for an `.rpf`: one `resource` entry per carved resource (name
+or offset, type, inflated size, offset), sorted by type then name, and the breadcrumb ends on the archive. The first
+opening scans the archive and emits `archive-progress` events (`carving` in bytes, then `naming` in resources); the
+scan is cached in the app cache folder (`archives/`), so later openings answer at once. The list renders only the
+visible rows (fixed row heights), for archives of hundreds of thousands of resources.
+
 ## Formats adapter
 
 `crates/openvi-formats` is the only crate that depends on `sixng-core` (pinned to one commit, without libopus). It
@@ -67,6 +73,9 @@ exposes its own types, so a SixNG update stops there:
   table of contents looks encrypted).
 - `scan_archive(path, archive_id, cache_dir, progress)`: carves the zlib streams of the data area into
   `ArchiveEntry` values (offset, sizes, `ResourceKind`). The scan is streamed, runs in parallel 256 MiB segments,
-  checkpoints each segment in `cache_dir` and is read back from there until the archive changes.
+  checkpoints each segment in `cache_dir` and is read back from there until the archive changes. A second pass
+  reads the name each RAGE resource carries in its own data (`<name>.#<tag>`; the tag gives the type: drawable,
+  fragment, drawable or texture dictionary) and is cached with the scan.
+- Feature `fixtures`: a synthetic archive for the tests of other crates.
 
-Names (hash → name) and resource decoding come with the archive view.
+Hash → name lookups (`sixng_core::names`) and resource decoding come with the index and the viewers.

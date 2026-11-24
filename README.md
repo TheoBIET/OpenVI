@@ -29,7 +29,7 @@ It runs on Windows, macOS and Linux.
 | Feature                                                                       | Status     |
 | ----------------------------------------------------------------------------- | ---------- |
 | Explorer: folder tree, grouped details list, path bar, filter, history        | ✅ done    |
-| Archive index: resources inside RPF9 archives, by type, with recovered names  | 🚧 next    |
+| Archive view: resources inside RPF9 archives, by type, with recovered names   | ✅ done    |
 | Viewers: 3D models (glTF export), textures (PNG / DDS export), text, audio    | 🗓️ planned |
 | Search across the whole index (names, hashes, game text)                      | 🗓️ planned |
 | Data-mining views: vehicles, weapons, missions, unreferenced (hidden) content | 🗓️ planned |
