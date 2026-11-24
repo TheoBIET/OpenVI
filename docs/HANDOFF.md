@@ -55,6 +55,16 @@ The maintainer tests with his own copy of the game files. Keep everything from t
 
 Record the results here, fix what breaks, commit.
 
+Results so far (Windows, release build of the example):
+
+| Archive      | Announced entries | Carved resources                 | Coverage | First scan |
+| ------------ | ----------------- | -------------------------------- | -------- | ---------- |
+| `common.rpf` | 418               | 225 (208 XML, 11 text, 6 binary) | 85.0 %   | 0.5 s      |
+
+Open: the header announces 418 entries but 225 are carved. Possibly stored (uncompressed) entries, which the zlib
+carver cannot see, or folders counted in the header. A gap report (largest uncovered ranges, their first bytes;
+SixNG has `gaps.rs`) would tell.
+
 ## Then, in order
 
 1. **Index**: SQLite (`rusqlite`, bundled, FTS5), one database per game version in the app data folder; the filter
