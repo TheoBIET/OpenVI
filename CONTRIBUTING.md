@@ -18,6 +18,8 @@ See [Build from source](README.md#build-from-source). `pnpm install` also instal
 - **pre-commit** checks formatting (oxfmt) and lint (oxlint) on the staged files;
 - **pre-push** runs the type check, the tests, `cargo clippy -- -D warnings` and `cargo test`.
 
+If you work with an AI agent, `npx skills install` restores the project's agent skills from `skills-lock.json`.
+
 ## Code style
 
 - TypeScript and React: formatted by oxfmt (`pnpm format`), linted by oxlint. Components stay small and typed.

@@ -12,6 +12,7 @@ Tauri 2 app, Rust backend, React 19 + Tailwind 4 UI, pnpm + turbo monorepo.
 - `docs/ARCHITECTURE.md`: decisions and data flow. Read it before adding a module or a dependency.
 - `docs/LEGAL.md`: clean-room rules. Read it before touching anything that reads game files.
 - Commands: root `package.json` scripts; Rust: `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`.
+- Agent skills are not committed: after cloning, `npx skills install` restores them from `skills-lock.json`.
 
 ## Rules
 
