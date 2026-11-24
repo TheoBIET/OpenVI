@@ -26,15 +26,15 @@ It runs on Windows, macOS and Linux.
 
 ## Roadmap
 
-| Feature                                                                       | Status     |
-| ----------------------------------------------------------------------------- | ---------- |
-| Explorer: folder tree, grouped details list, path bar, filter, history        | ✅ done    |
-| Archive view: resources inside RPF9 archives, by type, with recovered names   | ✅ done    |
-| Viewers: textures and text done; 3D models, audio, exports to come            | 🚧 started |
-| Search across the whole index: names (hashes and game text to come)           | ✅ names   |
-| Data-mining views: vehicles, weapons, missions, unreferenced (hidden) content | 🗓️ planned |
-| Map viewer in the spirit of CodeWalker                                        | 💭 later   |
-| Modding (replacing files) through a PC compatibility layer's overlay          | 💭 later   |
+| Feature                                                                     | Status     |
+| --------------------------------------------------------------------------- | ---------- |
+| Explorer: folder tree, grouped details list, path bar, filter, history      | ✅ done    |
+| Archive view: resources inside RPF9 archives, by type, with recovered names | ✅ done    |
+| Viewers: textures and text done; 3D models, audio, exports to come          | 🚧 started |
+| Search across the whole index: names (hashes and game text to come)         | ✅ names   |
+| Data-mining views: vehicles done; weapons, missions, hidden content to come | 🚧 started |
+| Map viewer in the spirit of CodeWalker                                      | 💭 later   |
+| Modding (replacing files) through a PC compatibility layer's overlay        | 💭 later   |
 
 > [!NOTE]
 > The table of contents of RPF9 archives is encrypted, and OpenVI does not decrypt it. Inside an archive you will

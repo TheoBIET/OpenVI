@@ -105,6 +105,13 @@ Double-clicking (or Enter on) a loose file, or an XML, text or PNG resource, ope
 `import()` on the first document, so it costs nothing at start-up. Its theme uses the colour tokens; XML and JSON can
 be laid out (`lib/prettify.ts`), and the language is picked from the extension or the first characters.
 
+## Catalogs
+
+`catalog.rs` (app) builds the vehicle catalog: it scans `packs.rpf` and `data.rpf` with the per-archive lock and
+records them in the index (progress as `catalog-progress` events), then calls `openvi_formats::catalog`. The view
+(`VehiclesView.tsx`) is a sortable table narrowed by the filter box, exported as CSV or JSON through the save dialog
+and `save_export` (writes `.csv` and `.json` only). The frontend keeps one catalog per game folder per session.
+
 ## Index
 
 `crates/openvi-index` keeps the scans in SQLite (bundled, WAL), one database per game folder in the app's local data
