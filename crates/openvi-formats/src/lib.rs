@@ -7,6 +7,7 @@
 pub mod catalog;
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;
+pub mod model;
 
 use std::path::Path;
 use std::sync::Arc;
