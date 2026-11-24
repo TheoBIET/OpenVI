@@ -275,6 +275,39 @@ pub fn resource_details(path: &Path, archive_id: &str, cache_dir: &Path, offset:
     })
 }
 
+/// The start of a text resource, for the text viewer.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextPreview {
+    pub text: String,
+    /// The resource is longer than what `text` holds.
+    pub truncated: bool,
+}
+
+/// The text of the XML or plain-text resource at `offset`, at most `max_bytes` of it.
+pub fn resource_text(
+    path: &Path,
+    archive_id: &str,
+    cache_dir: &Path,
+    offset: u64,
+    max_bytes: usize,
+) -> Result<TextPreview> {
+    let entry = cached_entry(archive_id, cache_dir, offset)?;
+    anyhow::ensure!(
+        matches!(entry.kind, classify::Kind::Xml | classify::Kind::Text),
+        "the resource at {offset:#x} is not text"
+    );
+    let bytes = scan::read_entry(path, &entry)?;
+    let body = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes);
+    let truncated = body.len() > max_bytes;
+    let mut text = String::from_utf8_lossy(&body[..body.len().min(max_bytes)]).into_owned();
+    // A cut in the middle of a UTF-8 sequence decodes to a replacement character at the end.
+    if truncated && text.ends_with('\u{FFFD}') {
+        text.pop();
+    }
+    Ok(TextPreview { text, truncated })
+}
+
 /// Texture `index` of the resource at `offset`, decoded to PNG. Uses the largest mip that fits in `max_size` pixels
 /// a side, when the texture has one; otherwise the full-size image.
 pub fn texture_png(
@@ -440,5 +473,21 @@ mod tests {
         let [blue, green, red, alpha] = fixtures::TEXTURE_BGRA;
         assert!(image.pixels().all(|pixel| pixel.0 == [red, green, blue, alpha]));
         assert!(absent.is_err());
+    }
+
+    #[test]
+    fn reads_text_resources_and_refuses_the_others() {
+        let (dir, archive, offsets) = scanned("text");
+        let full = resource_text(&archive, "common.rpf", &dir.join("cache"), offsets[2], 1 << 20);
+        let cut = resource_text(&archive, "common.rpf", &dir.join("cache"), offsets[2], 10);
+        let texture = resource_text(&archive, "common.rpf", &dir.join("cache"), offsets[4], 1 << 20);
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let full = full.unwrap();
+        assert!(full.text.starts_with("<?xml") && full.text.contains("<vehicles>"));
+        assert!(!full.truncated);
+        let cut = cut.unwrap();
+        assert_eq!((cut.text.as_str(), cut.truncated), ("<?xml vers", true));
+        assert!(texture.is_err());
     }
 }
