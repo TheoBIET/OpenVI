@@ -1,4 +1,5 @@
-import { type KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { type KeyboardEvent, type MouseEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { formatOffset, formatSize, typeLabel } from '../lib/format';
 import type { Entry } from '../lib/fs';
@@ -57,12 +58,14 @@ function groupByType(entries: Entry[]): Group[] {
     .sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
 }
 
-function layOut(groups: Group[]): { lines: Line[]; height: number } {
+/** Lines of every group; a collapsed group keeps only its header. */
+function layOut(groups: Group[], collapsed: ReadonlySet<string>): { lines: Line[]; height: number } {
   const lines: Line[] = [];
   let top = 0;
   for (const group of groups) {
     lines.push({ top, header: group });
     top += headerHeight;
+    if (collapsed.has(group.label)) continue;
     for (const entry of group.entries) {
       lines.push({ top, entry });
       top += rowHeight;
@@ -85,8 +88,12 @@ function lineAt(lines: Line[], y: number): number {
 
 export function FileList({ entries, selected, onSelect, onActivate, onUp }: FileListProps) {
   const groups = useMemo(() => groupByType(entries), [entries]);
-  const ordered = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
-  const { lines, height } = useMemo(() => layOut(groups), [groups]);
+  /** Group labels folded to their header; kept while browsing, so a type stays folded from folder to folder. */
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const { lines, height } = useMemo(() => layOut(groups, collapsed), [groups, collapsed]);
+  // Keyboard order: the rows on show, so the arrows skip folded groups.
+  const ordered = useMemo(() => lines.flatMap((line) => (line.entry ? [line.entry] : [])), [lines]);
+  const headers = useMemo(() => lines.filter((line) => line.header !== undefined), [lines]);
   const extra = extraOf(entries);
   const columns = `grid ${extraColumns[extra ?? 'none']} items-center gap-4`;
 
@@ -121,6 +128,24 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
     }
   }
 
+  /** Folds or unfolds `label`; Ctrl or Cmd folds or unfolds every group. */
+  function toggle(label: string, event: MouseEvent) {
+    const element = scroller.current;
+    const header = headers.find((line) => line.header.label === label);
+    // Folding the group stuck at the top brings its header back into view.
+    if (element && header && element.scrollTop > header.top) element.scrollTop = header.top;
+    setCollapsed((previous) => {
+      if (event.ctrlKey || event.metaKey) {
+        const everyFolded = groups.every((group) => previous.has(group.label));
+        return everyFolded ? new Set() : new Set(groups.map((group) => group.label));
+      }
+      const next = new Set(previous);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const index = ordered.findIndex((entry) => entry.path === selected);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -142,6 +167,9 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
   const first = lines.length ? lineAt(lines, viewport.top - overscan) : 0;
   const last = lines.length ? lineAt(lines, viewport.top + viewport.height + overscan) : -1;
   const visible = lines.slice(first, last + 1);
+  // The group the top of the view is in; its header stays pinned once the real one scrolls away.
+  const current = headers.filter((line) => line.top <= viewport.top).at(-1);
+  const pinned = current && viewport.top > current.top ? current.header : undefined;
 
   return (
     <section
@@ -157,44 +185,85 @@ export function FileList({ entries, selected, onSelect, onActivate, onUp }: File
         {extra === 'offset' && <span className="text-right">Offset</span>}
         {extra === 'archive' && <span>Archive</span>}
       </div>
-      <div
-        ref={scroller}
-        onScroll={(event) =>
-          setViewport({ top: event.currentTarget.scrollTop, height: event.currentTarget.clientHeight })
-        }
-        className="flex-1 overflow-auto"
-      >
-        {groups.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No items match.</p>}
-        <div className="relative" style={{ height: height + 8 }}>
-          {visible.map((line) =>
-            line.header ? (
-              <div
-                key={`group:${line.header.label}`}
-                role="group"
-                aria-label={line.header.label}
-                style={{ top: line.top, height: headerHeight }}
-                className="absolute inset-x-0 flex items-end gap-2 px-3 pb-1 font-title text-xs text-accent-solid"
-              >
-                {line.header.label}
-                <span className="text-muted-foreground">({line.header.entries.length.toLocaleString('en-US')})</span>
-                <span className="mb-1.5 h-px flex-1 bg-muted" />
-              </div>
-            ) : (
-              <Row
-                key={line.entry.path}
-                entry={line.entry}
-                top={line.top}
-                columns={columns}
-                extra={extra}
-                selected={line.entry.path === selected}
-                onSelect={onSelect}
-                onActivate={onActivate}
-              />
-            ),
-          )}
+      <div className="relative min-h-0 flex-1">
+        {pinned && (
+          <GroupHeader
+            group={pinned}
+            collapsed={collapsed.has(pinned.label)}
+            onToggle={toggle}
+            className="absolute top-0 right-2 left-0 z-10 bg-background/95 backdrop-blur-sm"
+          />
+        )}
+        <div
+          ref={scroller}
+          onScroll={(event) =>
+            setViewport({ top: event.currentTarget.scrollTop, height: event.currentTarget.clientHeight })
+          }
+          className="absolute inset-0 overflow-auto"
+        >
+          {groups.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No items match.</p>}
+          <div className="relative" style={{ height: height + 8 }}>
+            {visible.map((line) =>
+              line.header ? (
+                <GroupHeader
+                  key={`group:${line.header.label}`}
+                  group={line.header}
+                  collapsed={collapsed.has(line.header.label)}
+                  onToggle={toggle}
+                  top={line.top}
+                  className="absolute inset-x-0"
+                />
+              ) : (
+                <Row
+                  key={line.entry.path}
+                  entry={line.entry}
+                  top={line.top}
+                  columns={columns}
+                  extra={extra}
+                  selected={line.entry.path === selected}
+                  onSelect={onSelect}
+                  onActivate={onActivate}
+                />
+              ),
+            )}
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/** A group title: click to fold or unfold the group, Ctrl or Cmd click for every group. */
+function GroupHeader({
+  group,
+  collapsed,
+  onToggle,
+  top,
+  className,
+}: {
+  group: Group;
+  collapsed: boolean;
+  onToggle: (label: string, event: MouseEvent) => void;
+  top?: number;
+  className: string;
+}) {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-expanded={!collapsed}
+      title="Click to fold or unfold; Ctrl+click for every group"
+      onClick={(event) => onToggle(group.label, event)}
+      style={{ top, height: headerHeight }}
+      className={`${className} flex cursor-default items-end gap-1.5 px-3 pb-1 text-left font-title text-xs text-accent-solid hover:text-primary`}
+    >
+      <ChevronRight
+        className={`mb-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform ${collapsed ? '' : 'rotate-90'}`}
+      />
+      {group.label}
+      <span className="text-muted-foreground">({group.entries.length.toLocaleString('en-US')})</span>
+      <span className="mb-1.5 h-px flex-1 bg-muted" />
+    </button>
   );
 }
 
