@@ -2,6 +2,14 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.11.0 (2026-11-24)
+
+- The model on screen stays while the next one loads: changing parts, configuration, clip or selection keeps it,
+  blurred under a spinner, until the new one fades in over it.
+- Loading reserves its space: the 3D view's frame with a skeleton stage on first load, skeleton rows and sections in
+  the preview pane, code-shaped skeletons for documents and the editor; nothing jumps when content arrives.
+- Vehicles and Characters follow the arrow keys and open on Enter.
+
 ## 0.10.0 (2026-11-24)
 
 - Preview pane on the right everywhere: a click selects and previews (folders and archives, loose text and image

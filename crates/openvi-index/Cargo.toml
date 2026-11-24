@@ -1,6 +1,6 @@
 [package]
 name = "openvi-index"
-version = "0.10.0"
+version = "0.11.0"
 description = "OpenVI's local index: the resources of every scanned archive, searchable by name"
 authors = ["Théo BIET"]
 license = "GPL-3.0-only"

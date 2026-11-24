@@ -49,6 +49,8 @@ State of the work and the next task, for whoever picks it up. Update it when you
   **Never seen: needs `anim.rpf` and `packs.rpf`.**
 - **Done (0.10.0):** preview pane on the right in the explorer, Vehicles and Characters (`components/preview.tsx`:
   `PreviewPane`, `ModelThumb`, `useSettled`), with Open beside the double-click.
+- **Done (0.11.0):** UX pass: double-buffered 3D (the old model stays blurred under a spinner until the new one
+  fades in), skeletons reserving space, arrow keys and Enter in the catalog lists.
 - **Verified on macOS (Apple Silicon):** `pnpm dev` opens the window and lists a real folder.
 - **Verified on Windows 11 (2026-11-24):** `pnpm install`, `pnpm dev`, rustfmt, clippy, `cargo test` (7 tests),
   oxfmt, oxlint and tsc. Windows setup needed: Node 26.13.0 through nvm (`nvm reshim` after installing pnpm), and
@@ -121,7 +123,7 @@ carver cannot see, folders counted in the header, or the missing parts above.
    vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
 2. **More exports**: DDS for textures, a whole texture dictionary at once, batch exports of a filtered list or of
    the vehicle catalog's models.
-3. **Weapons (0.11.0)**:
+3. **Weapons (0.12.0)**:
    `sixng_core::weapon` and `matlib` (weapon models and finishes). Then text tables (`sixng_core::text`) and the other
    data-mining views of [PRODUCT.md](PRODUCT.md).
 4. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
