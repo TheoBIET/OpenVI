@@ -1,0 +1,36 @@
+{
+  "name": "openvi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source data-mining toolkit for GTA VI files: browse RPF9 archives, view models, catalog vehicles, weapons and missions",
+  "license": "GPL-3.0-only",
+  "author": "Théo BIET",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheoBIET/open-vi.git"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --filter=@openvi/desktop",
+    "dev:web": "turbo run dev:web --filter=@openvi/desktop",
+    "check-types": "turbo run check-types",
+    "lint": "turbo run lint --ui stream",
+    "test": "turbo run test --ui stream",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "husky": "^9.1.7",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "turbo": "^2.11.10",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "engines": {
+    "node": "26.13.0"
+  },
+  "packageManager": "pnpm@12.16.1+sha512.091d1dee7927575661b25dab3c2ae31cafc1c54d6b71ed6a6600cf0c1cb10434a447eae14015f1b23e2e6bedeed79df94a932e2164d2832280dce3fb32f656d1"
+}

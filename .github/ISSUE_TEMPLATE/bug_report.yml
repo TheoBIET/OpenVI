@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in OpenVI does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach game files or assets extracted from them; describe the file instead (name, size).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the folder …
+        2. Double-click …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: OpenVI version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      render: text

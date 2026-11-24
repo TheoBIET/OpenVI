@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "jsxSingleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "all",
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "endOfLine": "lf",
+  "proseWrap": "preserve",
+  "sortImports": true,
+  "sortTailwindcss": {
+    "stylesheet": "./apps/desktop/src/styles.css",
+    "functions": ["cn", "clsx", "cva", "twMerge"]
+  },
+  "ignorePatterns": [
+    "**/.claude/**",
+    ".agents/**",
+    ".superpowers/**",
+    "**/src-tauri/gen/**",
+    "**/target/**",
+    "pnpm-lock.yaml"
+  ]
+}

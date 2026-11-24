@@ -1,0 +1,3 @@
+#!/bin/sh
+git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 -r pnpm exec oxfmt --check --no-error-on-unmatched-pattern &&
+  git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 -r pnpm exec oxlint --no-error-on-unmatched-pattern

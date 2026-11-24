@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest something OpenVI should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: The task you are trying to get done, and why the explorer does not cover it today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    id: prior-art
+    attributes:
+      label: Prior art
+      description: Tools that already do this (OpenIV, CodeWalker, SixNG …) and what you like or dislike about them.

@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+/* Leonida at dusk: violet-tinted night greys, with the sunset kept for brand accents. */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --color-ink-950: #0e0b15;
+  --color-ink-900: #15111f;
+  --color-ink-800: #211b30;
+  --color-ink-700: #2f2744;
+  --color-ink-400: #9b92b0;
+  --color-ink-200: #e4def0;
+  --color-flamingo: #ff4f9a;
+  --color-sunset: #ff8a4c;
+  --color-gold: #ffc35c;
+  --color-lagoon: #2fd5c8;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 font-sans text-[13px] text-ink-200 antialiased select-none;
+}
