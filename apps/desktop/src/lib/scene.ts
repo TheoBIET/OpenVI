@@ -1,9 +1,18 @@
 // three.js scene for the model view, loaded on first use: import this module with `import()`.
+import { convertFileSrc } from '@tauri-apps/api/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export type ModelStats = { meshes: number; triangles: number; size: [number, number, number] };
+export type ModelStats = {
+  meshes: number;
+  triangles: number;
+  size: [number, number, number];
+  /** Textures the materials use, once loaded. */
+  textures: number;
+  /** File names of the textures that could not be loaded (the materials show without them). */
+  missingTextures: string[];
+};
 
 /**
  * How the model is drawn: `lit` its own materials (textures and lights), `unlit` its textures without lighting,
@@ -37,13 +46,41 @@ function unlitOf(material: THREE.Material): THREE.MeshBasicMaterial {
   });
 }
 
+/** Prefix GLTFLoader puts before the relative URIs of a GLB's resources; {@link loadingManager} replaces it. */
+const RESOURCE = 'openvi-resource:';
+
 /**
- * Renders the GLB at `url` in `host`, orbit controls on, model standing on a grid at the origin (glTF is Y-up,
- * in metres). Calls `onReady` once loaded, `onError` when it cannot be. Returns how to drive and dispose it.
+ * A loading manager that serves the GLB's relative resources (its PNG textures) from beside it on disk, and records
+ * the ones that fail. Needed because `convertFileSrc` percent-encodes the whole path into one URL segment, so
+ * resolving `textures/a.png` against the GLB's URL would land at the server root, and every texture would fail.
+ */
+function loadingManager(glbPath: string, failed: string[]): THREE.LoadingManager {
+  const cut = Math.max(glbPath.lastIndexOf('\\'), glbPath.lastIndexOf('/'));
+  const folder = glbPath.slice(0, cut);
+  const separator = glbPath[cut] ?? '/';
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier((url) => {
+    if (!url.startsWith(RESOURCE)) return url;
+    // Resolve `.` and `..` here: a texture shared between exports can sit in a sibling folder, and the asset
+    // protocol's scope check wants a plain path.
+    const parts = folder.split(separator);
+    for (const part of decodeURIComponent(url.slice(RESOURCE.length)).split('/')) {
+      if (part === '..') parts.pop();
+      else if (part !== '.' && part !== '') parts.push(part);
+    }
+    return convertFileSrc(parts.join(separator));
+  });
+  manager.onError = (url) => failed.push(decodeURIComponent(url.split(/%5C|%2F|\//i).at(-1) ?? url));
+  return manager;
+}
+
+/**
+ * Renders the GLB file at `glbPath` in `host`, orbit controls on, model standing on a grid at the origin (glTF is
+ * Y-up, in metres). Calls `onReady` once loaded, `onError` when it cannot be. Returns how to drive and dispose it.
  */
 export function mountScene(
   host: HTMLElement,
-  url: string,
+  glbPath: string,
   onReady: (stats: ModelStats) => void,
   onError: (error: unknown) => void,
 ): SceneHandle {
@@ -116,8 +153,11 @@ export function mountScene(
   observer.observe(host);
   resize();
 
-  new GLTFLoader().load(
-    url,
+  const failed: string[] = [];
+  const loader = new GLTFLoader(loadingManager(glbPath, failed));
+  loader.setResourcePath(RESOURCE);
+  loader.load(
+    convertFileSrc(glbPath),
     (gltf) => {
       if (disposed) return;
       model = gltf.scene;
@@ -151,7 +191,19 @@ export function mountScene(
         if (!(geometry instanceof THREE.BufferGeometry)) return;
         triangles += (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
       });
-      onReady({ meshes, triangles: Math.round(triangles), size: [size.x, size.y, size.z] });
+      const textures = new Set<THREE.Texture>();
+      for (const own of originals.values()) {
+        for (const material of Array.isArray(own) ? own : [own]) {
+          for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+        }
+      }
+      onReady({
+        meshes,
+        triangles: Math.round(triangles),
+        size: [size.x, size.y, size.z],
+        textures: textures.size,
+        missingTextures: [...new Set(failed)],
+      });
     },
     undefined,
     (error) => !disposed && onError(error),
