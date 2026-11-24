@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::UNIX_EPOCH;
 
 use anyhow::{Context, Result};
-use openvi_formats::{ArchiveScan, ScanPhase, scan_archive};
+use openvi_formats::{ArchiveScan, ScanPhase};
 use openvi_index::{Index, Status};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -169,7 +169,7 @@ fn index_all(
             }
             let scanning = Arc::clone(&progress);
             let (archive, position, count) = (relative.clone(), number + 1, archives.len());
-            let scan = scan_archive(&path, relative, cache, move |phase, done, total| {
+            let scan = crate::scans::scan_exclusive(&path, relative, cache, move |phase, done, total| {
                 scanning(IndexProgress {
                     archive: archive.clone(),
                     position,

@@ -3,12 +3,12 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, ensure};
-use openvi_formats::{ScanPhase, scan_archive};
+use openvi_formats::ScanPhase;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::fs::{Entry, EntryKind, Listing, Located, is_archive, locate};
-use crate::index;
+use crate::{index, scans};
 
 /// Event sent while an archive is scanned for the first time.
 pub const PROGRESS_EVENT: &str = "archive-progress";
@@ -63,7 +63,7 @@ fn archive_listing(
         path.display()
     );
 
-    let scan = scan_archive(&path, &relative, cache, progress)?;
+    let scan = scans::scan_exclusive(&path, &relative, cache, progress)?;
     if let Some(database) = database {
         // The listing does not depend on the index: a failure to record it only shows in the log.
         if let Err(error) = index::record(database, &path, &relative, &scan) {

@@ -5,6 +5,7 @@ mod file;
 mod fs;
 mod index;
 mod resource;
+mod scans;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
