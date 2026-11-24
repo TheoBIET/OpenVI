@@ -2,6 +2,14 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.15.0 (2026-11-25)
+
+- Updates: OpenVI checks GitHub for a newer version on start and every six hours. The status bar then offers
+  "Update to x.y.z", which downloads it, checks its signature, installs it and restarts; clicking the version checks
+  at once.
+- Releases are published with their installers (Windows setup `.exe` and `.msi`, macOS `.dmg`, Linux `.AppImage`,
+  `.deb` and `.rpm`) and their notes from this changelog.
+
 ## 0.14.0 (2026-11-25)
 
 - Characters: every ped model of the game's outfit list, not only the characters with parts named after them (about
