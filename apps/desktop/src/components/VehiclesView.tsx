@@ -55,15 +55,15 @@ function compare(a: Vehicle, b: Vehicle, key: keyof Vehicle, descending: boolean
   return descending ? -order : order;
 }
 
-/** The vehicle catalog as a sortable table; the filter box narrows it, double-click searches the model's resources. */
+/** The vehicle catalog as a sortable table; the filter box narrows it, double-click opens the vehicle in 3D. */
 export function VehiclesView({
   root,
   filter,
-  onFind,
+  onOpen,
 }: {
   root: string;
   filter: string;
-  onFind: (model: string) => void;
+  onOpen: (vehicle: Vehicle) => void;
 }) {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [progress, setProgress] = useState<CatalogProgress | null>(null);
@@ -196,8 +196,8 @@ export function VehiclesView({
           <div
             key={vehicle.modelHash}
             role="row"
-            title={vehicle.model ? `Double-click to find ${vehicle.model}'s resources` : vehicle.modelHash}
-            onDoubleClick={() => vehicle.model && onFind(vehicle.model)}
+            title={vehicle.model ? `Double-click to see ${vehicle.model} in 3D` : vehicle.modelHash}
+            onDoubleClick={() => onOpen(vehicle)}
             className="grid h-6 cursor-default items-center gap-3 px-3 hover:bg-secondary"
             style={grid}
           >

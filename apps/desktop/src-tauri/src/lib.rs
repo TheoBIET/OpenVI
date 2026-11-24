@@ -5,6 +5,7 @@ mod catalog;
 mod file;
 mod fs;
 mod index;
+mod model;
 mod resource;
 mod scans;
 
@@ -27,7 +28,9 @@ pub fn run() {
             file::file_preview,
             file::file_bytes,
             catalog::vehicle_list,
-            catalog::save_export
+            catalog::save_export,
+            model::model_preview,
+            model::vehicle_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running OpenVI");

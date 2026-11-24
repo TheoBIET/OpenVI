@@ -9,7 +9,9 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
 import { StatusBar } from './components/StatusBar';
 import { Toolbar } from './components/Toolbar';
+import { VehiclePreview } from './components/VehiclePreview';
 import { VehiclesView } from './components/VehiclesView';
+import type { Vehicle } from './lib/catalog';
 import {
   type Crumb,
   type Entry,
@@ -41,6 +43,9 @@ const viewerCrumb = '#viewer';
 
 /** Path of the breadcrumb that stands for the vehicle catalog. */
 const vehiclesCrumb = '#vehicles';
+
+/** Path of the breadcrumb that stands for the vehicle shown in 3D. */
+const vehicleCrumb = '#vehicle';
 
 type History = { stack: string[]; index: number };
 
@@ -80,6 +85,8 @@ export function App() {
   const [viewer, setViewer] = useState<Entry | null>(null);
   /** The vehicle catalog, shown in place of the list. */
   const [vehiclesOpen, setVehiclesOpen] = useState(false);
+  /** A vehicle of the catalog shown in 3D. */
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
   const latest = useRef(0);
   /** The archive being opened, for the progress listener (which outlives renders). */
@@ -122,6 +129,7 @@ export function App() {
     setSearch(null);
     setViewer(null);
     setVehiclesOpen(false);
+    setVehicle(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -151,7 +159,9 @@ export function App() {
   }
 
   async function navigate(path: string, select: string | null = null) {
-    if (!root || path === searchCrumb || path === viewerCrumb || path === vehiclesCrumb) return;
+    if (path === vehiclesCrumb) setVehicle(null);
+    if (!root || path === searchCrumb || path === viewerCrumb || path === vehiclesCrumb || path === vehicleCrumb)
+      return;
     if (path === listing?.path && !search) {
       setViewer(null);
       setVehiclesOpen(false);
@@ -171,6 +181,10 @@ export function App() {
     // Back from an open document returns to the list it was opened from.
     if (viewer && step === -1) {
       setViewer(null);
+      return;
+    }
+    if (vehicle && step === -1) {
+      setVehicle(null);
       return;
     }
     if (vehiclesOpen && step === -1) {
@@ -222,6 +236,7 @@ export function App() {
       setSearch({ query, ...view });
       setViewer(null);
       setVehiclesOpen(false);
+      setVehicle(null);
       setSelected(null);
       setError(null);
       if (view.truncated) {
@@ -308,8 +323,12 @@ export function App() {
       : (listing?.crumbs ?? []);
   let crumbs = viewer ? [...listCrumbs, { name: viewer.name, path: viewerCrumb }] : listCrumbs;
   if (vehiclesOpen && rootCrumb) crumbs = [rootCrumb, { name: 'Vehicles', path: vehiclesCrumb }];
+  if (vehiclesOpen && rootCrumb && vehicle) {
+    crumbs = [...crumbs, { name: vehicle.displayName ?? vehicle.model ?? vehicle.modelHash, path: vehicleCrumb }];
+  }
   const goUp = () => {
     if (viewer) setViewer(null);
+    else if (vehicle) setVehicle(null);
     else if (vehiclesOpen) setVehiclesOpen(false);
     else if (search) void travel(-1);
     else if (parent) void navigate(parent.path);
@@ -366,10 +385,13 @@ export function App() {
             />
           )}
           {!opening && viewer && <DocumentView root={root} entry={viewer} />}
-          {!opening && !viewer && vehiclesOpen && (
-            <VehiclesView
+          {!opening && !viewer && vehiclesOpen && !vehicle && (
+            <VehiclesView root={root} filter={filter} onOpen={setVehicle} />
+          )}
+          {!opening && !viewer && vehiclesOpen && vehicle && (
+            <VehiclePreview
               root={root}
-              filter={filter}
+              vehicle={vehicle}
               onFind={(model) => {
                 setFilter(model);
                 void runSearch(model);

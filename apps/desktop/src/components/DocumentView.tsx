@@ -4,28 +4,34 @@ import { useEffect, useMemo, useState } from 'react';
 import { fileImage, filePreview, resourceImage } from '../lib/document';
 import { formatSize } from '../lib/format';
 import type { Entry } from '../lib/fs';
+import { modelPreview } from '../lib/model';
 import { canPrettify, languageOf, prettify } from '../lib/prettify';
 import { textPreview } from '../lib/resource';
 import { CodeView } from './CodeView';
+import { ModelView } from './ModelView';
 
 type Content =
   | { type: 'text'; text: string; truncated: boolean }
   | { type: 'image'; url: string }
+  | { type: 'model'; path: string }
   | { type: 'none'; message: string };
 
 type Loaded = { state: 'loading' } | { state: 'ready'; content: Content } | { state: 'failed'; error: string };
 
 const textResources = new Set(['XML Document', 'Text']);
+const modelResources = new Set(['Drawable', 'Fragment', 'Drawable Dictionary']);
 
 /** Whether {@link DocumentView} can open `entry`. */
 export function isViewable(entry: Entry): boolean {
   if (entry.kind === 'file') return true;
-  return entry.kind === 'resource' && (textResources.has(entry.typeName ?? '') || entry.typeName === 'PNG Image');
+  const type = entry.typeName ?? '';
+  return entry.kind === 'resource' && (textResources.has(type) || modelResources.has(type) || type === 'PNG Image');
 }
 
 async function load(root: string, entry: Entry): Promise<Content> {
   if (entry.kind === 'resource') {
     if (entry.typeName === 'PNG Image') return { type: 'image', url: await resourceImage(root, entry.path) };
+    if (modelResources.has(entry.typeName ?? '')) return { type: 'model', path: await modelPreview(root, entry.path) };
     const preview = await textPreview(root, entry.path);
     return { type: 'text', ...preview };
   }
@@ -38,7 +44,7 @@ async function load(root: string, entry: Entry): Promise<Content> {
   };
 }
 
-/** A file or a resource opened in place of the list: text in Monaco, images on a checkerboard. */
+/** A file or a resource opened in place of the list: text in Monaco, images on a checkerboard, models in 3D. */
 export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [wrap, setWrap] = useState(false);
@@ -76,6 +82,10 @@ export function DocumentView({ root, entry }: { root: string; entry: Entry }) {
       return text.text;
     }
   }, [text, pretty, language]);
+
+  if (loaded.state === 'ready' && loaded.content.type === 'model') {
+    return <ModelView path={loaded.content.path} title={entry.name} />;
+  }
 
   function togglePretty() {
     if (!text) return;
