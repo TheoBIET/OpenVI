@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.5.1 (2026-11-24)
+
+- Model and vehicle exports follow their archive: one that changes (a download finishing, a game update) gets fresh
+  exports instead of reusing stale ones, and the vehicle tables are rebuilt when `packs.rpf` or `data.rpf` changes.
+
 ## 0.5.0 (2026-11-24)
 
 - Exports: Save raw writes any resource inflated, Save PNG writes the shown texture at full size, and the 3D view's
