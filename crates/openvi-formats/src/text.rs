@@ -30,6 +30,9 @@ pub struct TextLine {
     pub raw: String,
     /// The table holding it (`data.rpf@<offset>`).
     pub table: String,
+    /// In a search: how many strings (other labels) say the same.
+    #[serde(default)]
+    pub copies: usize,
 }
 
 /// The lines matching a search, best first, and how many matched in all.
@@ -89,6 +92,7 @@ fn read_lines(game_root: &Path, work_dir: &Path) -> Result<Vec<TextLine>> {
                 text,
                 raw: raw.clone(),
                 table: table.id.clone(),
+                copies: 0,
             });
         }
     }
@@ -146,7 +150,7 @@ pub fn text_lines(
 }
 
 /// The lines whose text contains `query` (any case) or whose label hash is `query`: whole-word matches first, then
-/// shorter lines; at most `limit`.
+/// shorter lines; one line per text (`copies` counts the others); at most `limit`.
 pub fn search(lines: &[TextLine], query: &str, limit: usize) -> TextSearch {
     let needle = query.trim().to_lowercase();
     if needle.is_empty() {
@@ -173,11 +177,17 @@ pub fn search(lines: &[TextLine], query: &str, limit: usize) -> TextSearch {
             Some((if before && after { 1 } else { 2 }, line.text.len(), line))
         })
         .collect();
-    let total = hits.len();
-    hits.sort_by_key(|(rank, length, _)| (*rank, *length));
+    hits.sort_by(|a, b| (a.0, a.1, &a.2.text).cmp(&(b.0, b.1, &b.2.text)));
+    let mut unique: Vec<TextLine> = Vec::new();
+    for (_, _, line) in hits {
+        match unique.last_mut() {
+            Some(last) if last.text == line.text => last.copies += 1,
+            _ => unique.push(line.clone()),
+        }
+    }
     TextSearch {
-        total,
-        lines: hits.into_iter().take(limit).map(|(_, _, line)| line.clone()).collect(),
+        total: unique.len(),
+        lines: unique.into_iter().take(limit).collect(),
         searched: lines.len(),
     }
 }
@@ -192,6 +202,7 @@ mod tests {
             text: text.into(),
             raw: text.into(),
             table: "data.rpf@0".into(),
+            copies: 0,
         }
     }
 
@@ -223,10 +234,12 @@ mod tests {
             line("00000001", "Carpet cleaning"),
             line("00000002", "Get in the car"),
             line("0badc0de", "Nothing here"),
+            line("00000003", "Get in the car"),
         ];
         let found = search(&lines, "car", 10);
         assert_eq!(found.total, 2);
-        assert_eq!(found.lines[0].label, "00000002");
+        assert_eq!(found.lines[0].text, "Get in the car");
+        assert_eq!(found.lines[0].copies, 1);
         assert_eq!(search(&lines, "0x0badc0de", 10).lines[0].text, "Nothing here");
         assert_eq!(search(&lines, "  ", 10).total, 0);
     }

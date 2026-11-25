@@ -111,13 +111,14 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
 
     let mut entries = Vec::new();
     for entry in std::fs::read_dir(&path)? {
-        let entry = entry?;
+        // An entry that vanishes while listed (a download renaming its temporary files) is left out, not an error.
+        let Ok(entry) = entry else { continue };
         let name = entry.file_name().to_string_lossy().into_owned();
         if name.starts_with('.') {
             continue;
         }
         // `file_type` does not follow symbolic links: links are left out, so a link loop cannot hang the tree.
-        let file_type = entry.file_type()?;
+        let Ok(file_type) = entry.file_type() else { continue };
         let entry_path = entry.path();
         if file_type.is_dir() {
             let items = std::fs::read_dir(&entry_path)
@@ -134,6 +135,7 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 location: None,
             });
         } else if file_type.is_file() {
+            let Ok(metadata) = entry.metadata() else { continue };
             let kind = if is_archive(&entry_path) {
                 EntryKind::Archive
             } else {
@@ -143,7 +145,7 @@ fn listing(root: &Path, path: &Path) -> io::Result<Listing> {
                 name,
                 path: entry_path,
                 kind,
-                size: entry.metadata()?.len(),
+                size: metadata.len(),
                 items: None,
                 offset: None,
                 type_name: None,

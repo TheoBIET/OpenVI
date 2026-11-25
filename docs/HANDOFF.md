@@ -148,11 +148,11 @@ carver cannot see, folders counted in the header, or the missing parts above.
    vehicle catalog and the 3D views have only run on synthetic bytes or partial data.
 2. **More exports**: DDS for textures, a whole texture dictionary at once, batch exports of a filtered list or of
    the vehicle catalog's models.
-3. **SixNG's new decoders**: a game text search (`sixng_core::text`, 4.2 M strings), then a Cutscenes section
-   (`sixng_core::cutscene`: every story scene's cast, props, cameras and clips, played on the cast).
-4. **More sections for a broad audience**, one release each: Clothes (wardrobe items by slot, style and colour,
-   tried on a character: generic garments done in 0.17.0), Audio (banks played in the app, Ogg/WAV export), Text, Cutscenes, Interiors (MLO rooms,
-   contents and entity sets); weapon finishes. Then the map, in the spirit of CodeWalker.
+3. **The map, further** (0.19.0 has the entities from above): roads (`export_paths`), interiors placed
+   (`export_interiors`) with their rooms and entity sets, the sector grid, then models in 3D around a point (each
+   entity's `gltf` transform is ready in `meta7a::Entity`).
+4. **More for a broad audience**: wardrobe items (style, colour), weapon finishes, audio and bank names
+   (`sixng names`, `audio-meta`), whole cutscenes with every cast member and camera.
 5. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.
 6. **Publishing**: green CI and a first tagged release (release workflow). The GitHub Pages site (`apps/site`,

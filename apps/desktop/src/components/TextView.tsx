@@ -106,6 +106,14 @@ export function TextView({ root, filter }: { root: string; filter: string }) {
               <span className="truncate" title={line.text}>
                 {line.text}
               </span>
+              {line.copies > 0 && (
+                <span
+                  className="ml-auto shrink-0 font-mono text-muted-foreground"
+                  title="Other labels with the same text"
+                >
+                  +{line.copies}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -128,6 +136,7 @@ export function TextView({ root, filter }: { root: string; filter: string }) {
               rows={[
                 ['Label hash', selected.label],
                 ['Table', selected.table],
+                ['Same text', selected.copies > 0 ? `${selected.copies} other labels` : '—'],
               ]}
             />
             {selected.raw !== selected.text && (

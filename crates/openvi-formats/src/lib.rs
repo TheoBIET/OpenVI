@@ -5,12 +5,15 @@
 //! data area is plain zlib, so resources are found by carving those streams and sniffing their first bytes.
 
 pub mod animations;
+pub mod audio;
 pub mod catalog;
 pub mod characters;
 pub mod clothes;
+pub mod cutscenes;
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;
 pub mod index_cache;
+pub mod map;
 pub mod model;
 pub mod text;
 pub mod weapons;

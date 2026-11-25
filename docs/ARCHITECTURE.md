@@ -136,6 +136,19 @@ is newer) and their clips; a clip plays through `character_glb` with a clip, whi
 (bone tracks on the joints of the same name; `anim_only` for the skeleton alone). The look folder's name includes
 the clip, and its sources `anim.rpf`'s state.
 
+## Audio, cutscenes, map
+
+- `openvi_formats::audio`: `sixng_core::audio` scans `audio.rpf` for its banks once (index in `<work>/index`, kept
+  in memory); a stream becomes Ogg Opus (Opus, a music stream's first stem) or WAV (PCM) bytes, played through an
+  object URL (`media-src blob:` in the CSP) and saved as they are.
+- `openvi_formats::cutscenes`: `sixng_core::cutscene` catalogs the story pack (`pack/story000/story000.rpf`); the
+  cast is named from every indexed archive and the assemblable characters (list kept in memory). A cast member plays
+  a scene through `characters::assemble` with `ClipSource::Loaded` (the scene's dictionary, sections joined).
+- `openvi_formats::map`: every map file of `levels.rpf` (`meta7a::map_file`) read into 16 bytes an entity (x, y, z,
+  model index), cached as `<work>/index/map.<scan state>.bin` with the model names, sent to the frontend as raw
+  bytes and drawn as three.js points under an orthographic camera (`lib/mapScene.ts`, `MapControls`); picking goes
+  through a 64 m grid. Interior contents (interior space) are not on it yet.
+
 ## Clothes
 
 `openvi_formats::clothes` lists the generic garments of `packs.rpf`: drawables with a fit tag (`mr1`, `fr1`…) and no

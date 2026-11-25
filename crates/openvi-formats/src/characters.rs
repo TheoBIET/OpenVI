@@ -296,6 +296,37 @@ pub fn character_glb(
     clip: Option<ClipChoice>,
     skeleton_only: bool,
 ) -> Result<PathBuf> {
+    assemble(
+        game_root,
+        work_dir,
+        name,
+        parts,
+        clip.map(ClipSource::Named),
+        skeleton_only,
+    )
+}
+
+/// Where a character's clip comes from.
+pub(crate) enum ClipSource<'a> {
+    /// A dictionary of `anim.rpf`, by name, and a clip of it.
+    Named(ClipChoice<'a>),
+    /// A dictionary already loaded (a cutscene's, its sections joined) from `archive`, and a clip of it.
+    Loaded {
+        dictionary: &'a anim::ClipDictionary,
+        clip: &'a str,
+        archive: &'a Path,
+    },
+}
+
+/// [`character_glb`] with a clip from any source.
+pub(crate) fn assemble(
+    game_root: &Path,
+    work_dir: &Path,
+    name: &str,
+    parts: Option<&[u64]>,
+    clip: Option<ClipSource>,
+    skeleton_only: bool,
+) -> Result<PathBuf> {
     ensure!(
         !skeleton_only || clip.is_some(),
         "a skeleton alone needs a clip to show"
@@ -342,19 +373,26 @@ pub fn character_glb(
     let mut look = chosen
         .iter()
         .fold(0xcbf2_9ce4_8422_2325_u64, |hash, offset| fnv(hash, *offset));
-    if let Some((dictionary, name)) = clip {
-        let text = format!("{dictionary}/{name}/{skeleton_only}");
+    let (clip_key, clip_sources) = match &clip {
+        Some(ClipSource::Named((dictionary, wanted))) => (
+            Some(format!("{dictionary}/{wanted}")),
+            version(&game_root.join(ANIMATIONS)),
+        ),
+        Some(ClipSource::Loaded {
+            dictionary,
+            clip: wanted,
+            archive,
+        }) => (Some(format!("{}/{wanted}", dictionary.name)), version(archive)),
+        None => (None, "still".into()),
+    };
+    if let Some(key) = &clip_key {
+        let text = format!("{key}/{skeleton_only}");
         look = text.bytes().fold(look, |hash, byte| fnv(hash, u64::from(byte)));
     }
     let sources = format!(
-        "{}_{}_{}",
+        "{}_{}_{clip_sources}",
         version(&game_root.join(CHARACTER_PARTS)),
         stores_version(game_root),
-        if clip.is_some() {
-            version(&game_root.join(ANIMATIONS))
-        } else {
-            "still".into()
-        }
     );
     // Every look and clip of a character shares one folder, so the textures decoded for one are reused by the next
     // (exports do not force them again).
@@ -368,21 +406,33 @@ pub fn character_glb(
     }
     let archive = workspace.resolve(CHARACTER_PARTS)?;
     let folder = out.parent().context("character export path has no folder")?;
-    let dictionary = match clip {
-        Some((dictionary, _)) => {
+    let named = match &clip {
+        Some(ClipSource::Named((dictionary, _))) => {
             scan_animations(game_root, work_dir, |_, _, _| {})?;
             Some(crate::animations::load_dictionary(game_root, work_dir, dictionary)?)
         }
-        None => None,
+        _ => None,
     };
-    let clips: Vec<(&anim::ClipDictionary, &anim::Clip)> = match (&dictionary, clip) {
-        (Some(loaded), Some((_, wanted))) => {
+    let picked: Option<(&anim::ClipDictionary, &str)> = match (&clip, &named) {
+        (Some(ClipSource::Named((_, wanted))), Some(loaded)) => Some((loaded.as_ref(), *wanted)),
+        (
+            Some(ClipSource::Loaded {
+                dictionary,
+                clip: wanted,
+                ..
+            }),
+            _,
+        ) => Some((*dictionary, *wanted)),
+        _ => None,
+    };
+    let clips: Vec<(&anim::ClipDictionary, &anim::Clip)> = match picked {
+        Some((loaded, wanted)) => {
             let found = loaded
                 .clip(wanted)
                 .with_context(|| format!("no clip {wanted} in {}", loaded.name))?;
-            vec![(loaded.as_ref(), found)]
+            vec![(loaded, found)]
         }
-        _ => Vec::new(),
+        None => Vec::new(),
     };
     // Without force, textures already decoded are kept; force only if that left no GLB.
     for force in [false, true] {

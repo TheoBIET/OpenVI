@@ -10,6 +10,8 @@ export type TextLine = {
   raw: string;
   /** The table holding it (`data.rpf@<offset>`). */
   table: string;
+  /** In a search: how many other labels say the same. */
+  copies: number;
 };
 
 export type TextSearch = { total: number; lines: TextLine[]; searched: number };

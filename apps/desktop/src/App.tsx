@@ -2,13 +2,16 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimationsView } from './components/AnimationsView';
+import { AudioView } from './components/AudioView';
 import { CharacterPreview } from './components/CharacterPreview';
 import { CharactersView } from './components/CharactersView';
 import { ClothesView, GarmentPreview } from './components/ClothesView';
+import { CutscenesView } from './components/CutscenesView';
 import { DocumentView, isViewable } from './components/DocumentView';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
+import { MapView } from './components/MapView';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
 import { type Section, SectionTabs } from './components/SectionTabs';
@@ -75,6 +78,15 @@ const animationsCrumb = '#animations';
 
 /** Path of the breadcrumb that stands for the Text section. */
 const textCrumb = '#text';
+
+/** Path of the breadcrumb that stands for the Audio section. */
+const audioCrumb = '#audio';
+
+/** Path of the breadcrumb that stands for the Cutscenes section. */
+const cutscenesCrumb = '#cutscenes';
+
+/** Path of the breadcrumb that stands for the Map section. */
+const mapCrumb = '#map';
 
 type History = { stack: string[]; index: number };
 
@@ -218,7 +230,10 @@ export function App() {
       path === clothesCrumb ||
       path === garmentCrumb ||
       path === animationsCrumb ||
-      path === textCrumb
+      path === textCrumb ||
+      path === audioCrumb ||
+      path === cutscenesCrumb ||
+      path === mapCrumb
     )
       return;
     if (path === listing?.path && !search) {
@@ -409,6 +424,9 @@ export function App() {
   }
   if (section === 'animations' && rootCrumb) crumbs = [rootCrumb, { name: 'Animations', path: animationsCrumb }];
   if (section === 'text' && rootCrumb) crumbs = [rootCrumb, { name: 'Text', path: textCrumb }];
+  if (section === 'audio' && rootCrumb) crumbs = [rootCrumb, { name: 'Audio', path: audioCrumb }];
+  if (section === 'cutscenes' && rootCrumb) crumbs = [rootCrumb, { name: 'Cutscenes', path: cutscenesCrumb }];
+  if (section === 'map' && rootCrumb) crumbs = [rootCrumb, { name: 'Map', path: mapCrumb }];
   if (section === 'characters' && rootCrumb) {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
@@ -519,6 +537,18 @@ export function App() {
           {!opening && !viewer && section === 'weapons' && weapon && <WeaponPreview root={root} weapon={weapon} />}
           {!opening && !viewer && section === 'animations' && <AnimationsView root={root} filter={filter} />}
           {!opening && !viewer && section === 'text' && <TextView root={root} filter={filter} />}
+          {!opening && !viewer && section === 'audio' && <AudioView root={root} filter={filter} />}
+          {!opening && !viewer && section === 'cutscenes' && <CutscenesView root={root} filter={filter} />}
+          {!opening && !viewer && section === 'map' && (
+            <MapView
+              root={root}
+              filter={filter}
+              onFind={(model) => {
+                setFilter(model);
+                void runSearch(model);
+              }}
+            />
+          )}
           {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}

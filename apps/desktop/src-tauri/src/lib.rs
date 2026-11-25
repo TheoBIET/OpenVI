@@ -2,13 +2,16 @@
 
 mod animations;
 mod archive;
+mod audio;
 mod catalog;
 mod characters;
 mod clothes;
+mod cutscenes;
 mod export;
 mod file;
 mod fs;
 mod index;
+mod map;
 mod model;
 mod progress;
 mod resource;
@@ -44,7 +47,15 @@ pub fn run() {
             characters::characters,
             weapons::weapons,
             clothes::clothes,
+            cutscenes::cutscenes,
+            cutscenes::cutscene_preview,
             text::game_text,
+            map::map_info,
+            map::map_points,
+            audio::audio_bank_list,
+            audio::audio_stream_list,
+            audio::audio_stream,
+            audio::save_audio,
             clothes::garment_preview,
             weapons::weapon_part_list,
             weapons::weapon_preview,

@@ -60,6 +60,16 @@ impl Reporter {
         });
     }
 
+    /// A step counted in bytes.
+    pub fn bytes(&self, label: impl Into<String>, done: u64, total: u64) {
+        self.send(Step {
+            label: label.into(),
+            done,
+            total,
+            bytes: true,
+        });
+    }
+
     /// The step of a scan of `archive`, as `scan_archive` reports it.
     pub fn scan(&self, archive: &str, phase: ScanPhase, done: u64, total: u64) {
         let (label, bytes) = match phase {
