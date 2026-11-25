@@ -11,7 +11,8 @@ publish = false
 
 [lib]
 name = "openvi_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# Desktop only: the mobile library types (staticlib, cdylib) cost hundreds of MB per build.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.7.6", features = [] }
