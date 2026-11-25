@@ -1,6 +1,6 @@
 [package]
 name = "openvi"
-version = "0.18.0"
+version = "0.19.0"
 description = "OpenVI desktop app"
 authors = ["Théo BIET"]
 license = "GPL-3.0-only"

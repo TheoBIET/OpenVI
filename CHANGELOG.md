@@ -2,6 +2,19 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.19.0 (2026-11-25)
+
+- Map section, in the spirit of CodeWalker: every entity the map files of `levels.rpf` place (buildings, props,
+  trees…) seen from above, coloured by height; drag to pan, wheel to zoom at the pointer. Typing a model name in the
+  filter box lights up where it is placed; a click shows an entity (model, position, how often it is placed) and finds
+  its model in the explorer. The first opening reads every map file (a few minutes), then it is cached.
+- Audio section: the sound banks of `audio.rpf` (music, speech, effects), their streams, played in the app and saved
+  as Ogg Opus or WAV as stored (no re-encoding). The first opening scans `audio.rpf` (about two minutes).
+- Cutscenes section: every scene of the story pack with its cast, props, cameras and set dressing; a cast member
+  plays the whole scene in 3D (its sections joined). The first opening scans the pack (a few minutes).
+- Text: identical strings under several labels show once, with how many other labels say the same.
+- A folder listing no longer fails when a file disappears while it is read (a download renaming its temporary files).
+
 ## 0.18.0 (2026-11-25)
 
 - Text section: search the game's English strings (subtitles, item names, UI, messages) by any part of them or by
