@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::{Context, Result, ensure};
 use rayon::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sixng_core::classify::Kind;
 use sixng_core::export::Workspace;
 use sixng_core::resource::Resource;
@@ -30,6 +30,24 @@ pub struct MapIndex {
     pub entities: Vec<([f32; 3], u32)>,
     /// Map files read.
     pub files: usize,
+    /// The interiors the map files place.
+    pub interiors: Vec<Interior>,
+}
+
+/// An interior (an MLO: a building's inside) placed in the world.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Interior {
+    /// Its archetype's name, or its hash (8 hex digits) when unknown.
+    pub name: String,
+    /// RAGE world space, metres.
+    pub position: [f32; 3],
+    /// From its definition, when found: rooms, entities and entity sets (optional states: a shop open or closed…).
+    pub rooms: usize,
+    pub entities: usize,
+    pub sets: usize,
+    /// Whether its definition (in another map file, in interior space) was found.
+    pub defined: bool,
 }
 
 /// What the index holds, for the view's header.
@@ -75,7 +93,7 @@ impl MapIndex {
         bytes
     }
 
-    fn from_points(models: Vec<String>, files: usize, bytes: &[u8]) -> Self {
+    fn from_points(models: Vec<String>, files: usize, interiors: Vec<Interior>, bytes: &[u8]) -> Self {
         let entities = bytes
             .as_chunks::<16>()
             .0
@@ -90,12 +108,17 @@ impl MapIndex {
             models,
             entities,
             files,
+            interiors,
         }
     }
 }
 
 /// One entity as a map file places it: position, archetype hash, model name when known.
 type Placed = ([f32; 3], u32, Option<String>);
+
+/// What one meta resource holds for the map: placed entities, interior instances (position, archetype) and interior
+/// definitions (name hash, rooms, entities, sets).
+type Read = (Vec<Placed>, Vec<([f32; 3], u32)>, Vec<(u32, usize, usize, usize)>);
 
 /// Reads every map file of `levels.rpf` (in parallel; `progress` counts files).
 fn build(game_root: &Path, work_dir: &Path, progress: &(impl Fn(u64, u64) + Sync)) -> Result<MapIndex> {
@@ -110,7 +133,7 @@ fn build(game_root: &Path, work_dir: &Path, progress: &(impl Fn(u64, u64) + Sync
         .collect();
     let total = metas.len() as u64;
     let done = AtomicU64::new(0);
-    let files: Vec<Vec<Placed>> = metas
+    let read: Vec<Read> = metas
         .par_iter()
         .filter_map(|entry| {
             let count = done.fetch_add(1, Ordering::Relaxed) + 1;
@@ -118,19 +141,59 @@ fn build(game_root: &Path, work_dir: &Path, progress: &(impl Fn(u64, u64) + Sync
                 progress(count, total);
             }
             let resource = Resource::load_sys(&archive.path, entry).ok()?;
-            let file = sixng_core::meta7a::map_file(&resource, &names)?;
-            (!file.entities.is_empty()).then(|| {
-                file.entities
-                    .into_iter()
-                    .map(|entity| (entity.position, entity.archetype, entity.name))
-                    .collect()
-            })
+            let meta = sixng_core::meta7a::Meta::parse(&resource)?;
+            let placed: Vec<Placed> = sixng_core::meta7a::map_file(&resource, &names)
+                .map(|file| {
+                    file.entities
+                        .into_iter()
+                        .map(|entity| (entity.position, entity.archetype, entity.name))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let instances: Vec<([f32; 3], u32)> = sixng_core::meta7a::mlo_instances(&meta)
+                .into_iter()
+                .map(|instance| (instance.position, instance.archetype))
+                .collect();
+            let definitions: Vec<(u32, usize, usize, usize)> = sixng_core::meta7a::mlos(&meta)
+                .into_iter()
+                .map(|mlo| (mlo.name, mlo.rooms.len(), mlo.entities.len(), mlo.sets.len()))
+                .collect();
+            let any = !placed.is_empty() || !instances.is_empty() || !definitions.is_empty();
+            any.then_some((placed, instances, definitions))
         })
+        .collect();
+    let definitions: HashMap<u32, (usize, usize, usize)> = read
+        .iter()
+        .flat_map(|(_, _, definitions)| definitions)
+        .map(|(name, rooms, entities, sets)| (*name, (*rooms, *entities, *sets)))
+        .collect();
+    let interiors = read
+        .iter()
+        .flat_map(|(_, instances, _)| instances)
+        .map(|(position, archetype)| {
+            let found = definitions.get(archetype);
+            let (rooms, entities, sets) = found.copied().unwrap_or_default();
+            Interior {
+                name: names
+                    .get(archetype)
+                    .map_or_else(|| format!("{archetype:08x}"), |(name, _)| name.clone()),
+                position: *position,
+                rooms,
+                entities,
+                sets,
+                defined: found.is_some(),
+            }
+        })
+        .collect();
+    let files: Vec<&Vec<Placed>> = read
+        .iter()
+        .map(|(placed, ..)| placed)
+        .filter(|placed| !placed.is_empty())
         .collect();
     let mut models: Vec<String> = Vec::new();
     let mut by_hash: HashMap<u32, u32> = HashMap::new();
     let mut entities = Vec::new();
-    for (position, archetype, name) in files.iter().flatten() {
+    for (position, archetype, name) in files.iter().copied().flatten() {
         let model = *by_hash.entry(*archetype).or_insert_with(|| {
             models.push(name.clone().unwrap_or_else(|| format!("{archetype:08x}")));
             (models.len() - 1) as u32
@@ -141,6 +204,7 @@ fn build(game_root: &Path, work_dir: &Path, progress: &(impl Fn(u64, u64) + Sync
         models,
         entities,
         files: files.len(),
+        interiors,
     })
 }
 
@@ -168,26 +232,30 @@ pub fn map_index(
     {
         return Ok(Arc::clone(index));
     }
-    let points = workspace.index_dir().join(format!("map.{state}.bin"));
-    let names = workspace.index_dir().join(format!("map.{state}.json"));
+    // `map2`: the index with interiors.
+    let points = workspace.index_dir().join(format!("map2.{state}.bin"));
+    let names = workspace.index_dir().join(format!("map2.{state}.json"));
     let cached = std::fs::read(&points).ok().zip(
         std::fs::read(&names)
             .ok()
-            .and_then(|bytes| serde_json::from_slice::<(Vec<String>, usize)>(&bytes).ok()),
+            .and_then(|bytes| serde_json::from_slice::<(Vec<String>, usize, Vec<Interior>)>(&bytes).ok()),
     );
     let index = match cached {
-        Some((bytes, (models, files))) => MapIndex::from_points(models, files, &bytes),
+        Some((bytes, (models, files, interiors))) => MapIndex::from_points(models, files, interiors, &bytes),
         None => {
             let index = build(game_root, work_dir, &progress)?;
             // Only the current state's index is kept.
             for entry in std::fs::read_dir(workspace.index_dir())?.flatten() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with("map.") && (name.ends_with(".bin") || name.ends_with(".json")) {
+                if name.starts_with("map") && (name.ends_with(".bin") || name.ends_with(".json")) {
                     let _ = std::fs::remove_file(entry.path());
                 }
             }
             std::fs::write(&points, index.points()).context("writing the map index")?;
-            std::fs::write(&names, serde_json::to_vec(&(&index.models, index.files))?)?;
+            std::fs::write(
+                &names,
+                serde_json::to_vec(&(&index.models, index.files, &index.interiors))?,
+            )?;
             index
         }
     };
@@ -206,10 +274,11 @@ mod tests {
             models: vec!["prop_bench_01".into()],
             entities: vec![([1.5, -2.0, 30.25], 0), ([-100.0, 250.0, 0.0], 0)],
             files: 1,
+            interiors: Vec::new(),
         };
         let bytes = index.points();
         assert_eq!(bytes.len(), 32);
-        let back = MapIndex::from_points(index.models.clone(), 1, &bytes);
+        let back = MapIndex::from_points(index.models.clone(), 1, Vec::new(), &bytes);
         assert_eq!(back.entities, index.entities);
         assert_eq!(index.summary().bounds, [-100.0, -2.0, 1.5, 250.0]);
     }

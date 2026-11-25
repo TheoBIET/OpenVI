@@ -2,6 +2,7 @@ import {
   Car,
   Clapperboard,
   Crosshair,
+  DoorOpen,
   Film,
   FolderTree,
   Languages,
@@ -21,7 +22,8 @@ export type Section =
   | 'cutscenes'
   | 'audio'
   | 'text'
-  | 'map';
+  | 'map'
+  | 'interiors';
 
 const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }[] = [
   { id: 'explorer', label: 'Explorer', icon: FolderTree, ready: true },
@@ -34,6 +36,7 @@ const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }
   { id: 'audio', label: 'Audio', icon: Music, ready: true },
   { id: 'text', label: 'Text', icon: Languages, ready: true },
   { id: 'map', label: 'Map', icon: MapIcon, ready: true },
+  { id: 'interiors', label: 'Interiors', icon: DoorOpen, ready: true },
 ];
 
 /** The explorer, then the catalogs built from the game data: one tab each. */

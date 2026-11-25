@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use openvi_formats::map::{MAP_ARCHIVE, MapSummary, map_index};
+use openvi_formats::map::{Interior, MAP_ARCHIVE, MapSummary, map_index};
 use serde::Serialize;
 use tauri::AppHandle;
 use tauri::ipc::Response;
@@ -12,12 +12,13 @@ use crate::catalog::scan_all;
 use crate::index;
 use crate::progress::Reporter;
 
-/// The map index's summary and its model names (an entity's model is an index into them).
+/// The map index's summary, its model names (an entity's model is an index into them) and the interiors it places.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MapInfo {
     summary: MapSummary,
     models: Vec<String>,
+    interiors: Vec<Interior>,
 }
 
 async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T, String> {
@@ -49,6 +50,7 @@ pub async fn map_info(app: AppHandle, root: PathBuf) -> Result<MapInfo, String> 
         Ok(MapInfo {
             summary: index.summary(),
             models: index.models.clone(),
+            interiors: index.interiors.clone(),
         })
     })
     .await

@@ -16,12 +16,24 @@ type Loaded =
  * The map from above, in the spirit of CodeWalker: every entity the map files place, coloured by height. The filter
  * box lights up the entities whose model matches; a click shows an entity, whose model can be found in the explorer.
  */
-export function MapView({ root, filter, onFind }: { root: string; filter: string; onFind: (model: string) => void }) {
+export function MapView({
+  root,
+  filter,
+  onFind,
+  focus,
+}: {
+  root: string;
+  filter: string;
+  onFind: (model: string) => void;
+  /** A point to centre on when the map opens (from the Interiors section), metres. */
+  focus: { x: number; y: number } | null;
+}) {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [progress, setProgress] = useState<CatalogProgress | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<MapHandle | null>(null);
+  const [showInteriors, setShowInteriors] = useState(true);
 
   useEffect(() => {
     let current = true;
@@ -45,7 +57,11 @@ export function MapView({ root, filter, onFind }: { root: string; filter: string
     const element = host.current;
     void import('../lib/mapScene').then(({ mountMap }) => {
       if (disposed) return;
-      handle.current = mountMap(element, loaded.points, setPicked);
+      const interiors = new Float32Array(
+        loaded.info.interiors.flatMap((interior) => [interior.position[0], interior.position[1]]),
+      );
+      handle.current = mountMap(element, loaded.points, interiors, setPicked);
+      if (focus) handle.current.focus(focus.x, focus.y, 400);
     });
     return () => {
       disposed = true;
@@ -65,6 +81,14 @@ export function MapView({ root, filter, onFind }: { root: string; filter: string
     });
     return found;
   }, [loaded, filter]);
+
+  useEffect(() => {
+    handle.current?.showInteriors(showInteriors);
+  }, [showInteriors]);
+
+  useEffect(() => {
+    if (focus) handle.current?.focus(focus.x, focus.y, 400);
+  }, [focus]);
 
   useEffect(() => {
     handle.current?.highlight(matching);
@@ -115,6 +139,15 @@ export function MapView({ root, filter, onFind }: { root: string; filter: string
             models · {info.summary.files.toLocaleString('en-US')} map files ·{' '}
             {Math.round(maxX - minX).toLocaleString('en-US')} × {Math.round(maxY - minY).toLocaleString('en-US')} m
           </span>
+          <label className="ml-auto flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={showInteriors}
+              onChange={(event) => setShowInteriors(event.target.checked)}
+              className="accent-primary"
+            />
+            Interiors ({info.interiors.length.toLocaleString('en-US')})
+          </label>
           {matching && (
             <span className="text-foreground">
               {matchingCount.toLocaleString('en-US')} placed of {matching.size.toLocaleString('en-US')} matching models

@@ -39,6 +39,8 @@ export type MapHandle = {
   highlight: (models: ReadonlySet<number> | null) => void;
   /** Centres the view on `x, y` (metres) at about `span` metres across. */
   focus: (x: number, y: number, span: number) => void;
+  /** Shows or hides the interiors' squares. */
+  showInteriors: (shown: boolean) => void;
   /** Marks one entity (or none). */
   mark: (index: number | null) => void;
   dispose: () => void;
@@ -57,10 +59,15 @@ function spatialGrid(points: MapPoints): Map<string, number[]> {
 }
 
 /**
- * Renders `points` from above in `host`: north up, drag to pan, wheel to zoom at the pointer. `onPick` gets the
- * entity nearest a click (within a few pixels), or null.
+ * Renders `points` from above in `host`: north up, drag to pan, wheel to zoom at the pointer; `interiors` (x, y pairs)
+ * as white squares above them. `onPick` gets the entity nearest a click (within a few pixels), or null.
  */
-export function mountMap(host: HTMLElement, points: MapPoints, onPick: (index: number | null) => void): MapHandle {
+export function mountMap(
+  host: HTMLElement,
+  points: MapPoints,
+  interiors: Float32Array,
+  onPick: (index: number | null) => void,
+): MapHandle {
   const renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setPixelRatio(window.devicePixelRatio);
   host.appendChild(renderer.domElement);
@@ -86,6 +93,19 @@ export function mountMap(host: HTMLElement, points: MapPoints, onPick: (index: n
   geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
   const material = new THREE.PointsMaterial({ size: 2, sizeAttenuation: false, vertexColors: true });
   scene.add(new THREE.Points(geometry, material));
+
+  const interiorPositions = new Float32Array((interiors.length / 2) * 3);
+  for (let index = 0; index < interiors.length / 2; index++) {
+    interiorPositions[index * 3] = at(interiors, index * 2);
+    interiorPositions[index * 3 + 1] = at(interiors, index * 2 + 1);
+    interiorPositions[index * 3 + 2] = 0.5;
+  }
+  const interiorGeometry = new THREE.BufferGeometry();
+  interiorGeometry.setAttribute('position', new THREE.BufferAttribute(interiorPositions, 3));
+  const interiorMaterial = new THREE.PointsMaterial({ size: 5, sizeAttenuation: false, color: '#f0f0f0' });
+  const interiorLayer = new THREE.Points(interiorGeometry, interiorMaterial);
+  interiorLayer.renderOrder = 1;
+  scene.add(interiorLayer);
 
   const marker = new THREE.Mesh(
     new THREE.RingGeometry(0.9, 1, 32),
@@ -204,6 +224,9 @@ export function mountMap(host: HTMLElement, points: MapPoints, onPick: (index: n
       camera.zoom = Math.min(Math.max(span / Math.max(wanted, 1), controls.minZoom), controls.maxZoom);
       camera.updateProjectionMatrix();
     },
+    showInteriors(shown) {
+      interiorLayer.visible = shown;
+    },
     mark(index) {
       marker.visible = index !== null;
       if (index !== null) marker.position.set(at(points.positions, index * 3), at(points.positions, index * 3 + 1), 1);
@@ -216,6 +239,8 @@ export function mountMap(host: HTMLElement, points: MapPoints, onPick: (index: n
       controls.dispose();
       geometry.dispose();
       material.dispose();
+      interiorGeometry.dispose();
+      interiorMaterial.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       span = 0;

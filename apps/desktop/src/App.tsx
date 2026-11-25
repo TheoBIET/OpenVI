@@ -11,6 +11,7 @@ import { DocumentView, isViewable } from './components/DocumentView';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
 import { FolderTree } from './components/FolderTree';
+import { InteriorsView } from './components/InteriorsView';
 import { MapView } from './components/MapView';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
@@ -88,6 +89,9 @@ const cutscenesCrumb = '#cutscenes';
 /** Path of the breadcrumb that stands for the Map section. */
 const mapCrumb = '#map';
 
+/** Path of the breadcrumb that stands for the Interiors section. */
+const interiorsCrumb = '#interiors';
+
 type History = { stack: string[]; index: number };
 
 type Search = { query: string; entries: Entry[]; truncated: boolean };
@@ -136,6 +140,8 @@ export function App() {
   const [weapon, setWeapon] = useState<Weapon | null>(null);
   /** A garment of the Clothes section shown in 3D. */
   const [garment, setGarment] = useState<Garment | null>(null);
+  /** A point the Map centres on when it opens (an interior shown from its section). */
+  const [mapFocus, setMapFocus] = useState<{ x: number; y: number } | null>(null);
   /** In a catalog section rather than the explorer. */
   const inCatalog = section !== 'explorer';
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
@@ -233,7 +239,8 @@ export function App() {
       path === textCrumb ||
       path === audioCrumb ||
       path === cutscenesCrumb ||
-      path === mapCrumb
+      path === mapCrumb ||
+      path === interiorsCrumb
     )
       return;
     if (path === listing?.path && !search) {
@@ -427,6 +434,7 @@ export function App() {
   if (section === 'audio' && rootCrumb) crumbs = [rootCrumb, { name: 'Audio', path: audioCrumb }];
   if (section === 'cutscenes' && rootCrumb) crumbs = [rootCrumb, { name: 'Cutscenes', path: cutscenesCrumb }];
   if (section === 'map' && rootCrumb) crumbs = [rootCrumb, { name: 'Map', path: mapCrumb }];
+  if (section === 'interiors' && rootCrumb) crumbs = [rootCrumb, { name: 'Interiors', path: interiorsCrumb }];
   if (section === 'characters' && rootCrumb) {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
@@ -546,6 +554,18 @@ export function App() {
               onFind={(model) => {
                 setFilter(model);
                 void runSearch(model);
+              }}
+              focus={mapFocus}
+            />
+          )}
+          {!opening && !viewer && section === 'interiors' && (
+            <InteriorsView
+              root={root}
+              filter={filter}
+              onShow={(interior) => {
+                setMapFocus({ x: interior.position[0], y: interior.position[1] });
+                setFilter('');
+                setSection('map');
               }}
             />
           )}

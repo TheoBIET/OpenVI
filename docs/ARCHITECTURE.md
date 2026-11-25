@@ -147,7 +147,9 @@ the clip, and its sources `anim.rpf`'s state.
 - `openvi_formats::map`: every map file of `levels.rpf` (`meta7a::map_file`) read into 16 bytes an entity (x, y, z,
   model index), cached as `<work>/index/map.<scan state>.bin` with the model names, sent to the frontend as raw
   bytes and drawn as three.js points under an orthographic camera (`lib/mapScene.ts`, `MapControls`); picking goes
-  through a 64 m grid. Interior contents (interior space) are not on it yet.
+  through a 64 m grid. The same pass reads the interior instances (`meta7a::mlo_instances`: world position, archetype)
+  and definitions (`meta7a::mlos`: rooms, entities, sets), joined by archetype hash, for the Interiors section and
+  the map's interior layer (`map2.<state>.*` caches). Interior contents (interior space) are not drawn yet.
 
 ## Clothes
 
