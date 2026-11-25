@@ -1,6 +1,6 @@
-import { Car, Clapperboard, Crosshair, FolderTree, Shirt, Users } from 'lucide-react';
+import { Car, Clapperboard, Crosshair, FolderTree, Languages, Shirt, Users } from 'lucide-react';
 
-export type Section = 'explorer' | 'vehicles' | 'characters' | 'clothes' | 'weapons' | 'animations';
+export type Section = 'explorer' | 'vehicles' | 'characters' | 'clothes' | 'weapons' | 'animations' | 'text';
 
 const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }[] = [
   { id: 'explorer', label: 'Explorer', icon: FolderTree, ready: true },
@@ -9,6 +9,7 @@ const sections: { id: Section; label: string; icon: typeof Car; ready: boolean }
   { id: 'clothes', label: 'Clothes', icon: Shirt, ready: true },
   { id: 'weapons', label: 'Weapons', icon: Crosshair, ready: true },
   { id: 'animations', label: 'Animations', icon: Clapperboard, ready: true },
+  { id: 'text', label: 'Text', icon: Languages, ready: true },
 ];
 
 /** The explorer, then the catalogs built from the game data: one tab each. */

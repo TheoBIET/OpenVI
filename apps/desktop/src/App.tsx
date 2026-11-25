@@ -13,6 +13,7 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { ScanPanel } from './components/ScanPanel';
 import { type Section, SectionTabs } from './components/SectionTabs';
 import { StatusBar } from './components/StatusBar';
+import { TextView } from './components/TextView';
 import { Toolbar } from './components/Toolbar';
 import { VehiclePreview } from './components/VehiclePreview';
 import { VehiclesView } from './components/VehiclesView';
@@ -71,6 +72,9 @@ const garmentCrumb = '#garment';
 
 /** Path of the breadcrumb that stands for the Animations section. */
 const animationsCrumb = '#animations';
+
+/** Path of the breadcrumb that stands for the Text section. */
+const textCrumb = '#text';
 
 type History = { stack: string[]; index: number };
 
@@ -213,7 +217,8 @@ export function App() {
       path === weaponCrumb ||
       path === clothesCrumb ||
       path === garmentCrumb ||
-      path === animationsCrumb
+      path === animationsCrumb ||
+      path === textCrumb
     )
       return;
     if (path === listing?.path && !search) {
@@ -403,6 +408,7 @@ export function App() {
     crumbs = [...crumbs, { name: vehicle.displayName ?? vehicle.model ?? vehicle.modelHash, path: vehicleCrumb }];
   }
   if (section === 'animations' && rootCrumb) crumbs = [rootCrumb, { name: 'Animations', path: animationsCrumb }];
+  if (section === 'text' && rootCrumb) crumbs = [rootCrumb, { name: 'Text', path: textCrumb }];
   if (section === 'characters' && rootCrumb) {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
@@ -512,6 +518,7 @@ export function App() {
           )}
           {!opening && !viewer && section === 'weapons' && weapon && <WeaponPreview root={root} weapon={weapon} />}
           {!opening && !viewer && section === 'animations' && <AnimationsView root={root} filter={filter} />}
+          {!opening && !viewer && section === 'text' && <TextView root={root} filter={filter} />}
           {!opening && !viewer && !inCatalog && (
             <FileList entries={visible} selected={selected} onSelect={setSelected} onActivate={activate} onUp={goUp} />
           )}
