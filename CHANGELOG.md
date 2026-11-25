@@ -2,6 +2,13 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.20.0 (2026-11-25)
+
+- Interiors section: every interior the map places (shops, homes, garages…), with its rooms, entities and entity sets
+  (optional states), filtered by name; one is shown on the map on demand.
+- Map: the interiors appear as white squares (a toggle hides them); points stay one pixel when the whole map is shown,
+  so the map reads instead of turning into one blob; the map is fetched once per session.
+
 ## 0.19.0 (2026-11-25)
 
 - Map section, in the spirit of CodeWalker: every entity the map files of `levels.rpf` place (buildings, props,
