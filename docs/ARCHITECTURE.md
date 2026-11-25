@@ -155,6 +155,11 @@ the clip, and its sources `anim.rpf`'s state.
   (`export_many`; which GLB a resource became is kept in `glbs.json`, as SixNG reports skipped exports without
   files) and writes an assembly manifest with each placement's matrix (from `Entity::gltf`), centred on the point.
   The 3D view loads each GLB once and clones it per placement.
+- World view (`lib/worldScene.ts`): `area::map_cell` gives a 128 m cell's high-detail placements in world space
+  (manifest kept in `<work>/cells/<scan state>/128/`; the app runs one cell at a time). The view fetches the cells
+  around the camera nearest first, loads each model once (four at a time, textures shrunk to 512 px) and draws each
+  model's placements as instanced meshes; far away, the map's entities are points, hidden inside loaded cells. Sky
+  (`three/addons/objects/Sky`), sun and fog follow the hour.
 - `model::prune_stale_exports`: once per run, export folders whose archive or texture-store state is gone are
   removed (never when no archive is found).
 

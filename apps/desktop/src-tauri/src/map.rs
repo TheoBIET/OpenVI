@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use openvi_formats::area::{Area, map_area};
+use openvi_formats::area::{Area, Cell, map_area, map_cell};
 use openvi_formats::map::{Interior, MAP_ARCHIVE, MapSummary, map_index};
 use serde::Serialize;
 use tauri::AppHandle;
@@ -91,6 +91,26 @@ pub async fn map_area_preview(app: AppHandle, root: PathBuf, x: f32, y: f32, rad
                 counting.count("Exporting the models of the area", done, total);
             },
         )
+    })
+    .await
+}
+
+/// One cell of the world at a time: two exports at once would write the same table of exported models.
+static CELLS: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Cell `(column, row)` of `size` metres for the free-flying view: read from its manifest when built before, else its
+/// models exported (counted as `catalog-progress`).
+#[tauri::command]
+pub async fn map_cell_preview(app: AppHandle, root: PathBuf, column: i32, row: i32, size: f32) -> Result<Cell, String> {
+    let root = index::canonical_root(&root)?;
+    let work = index::work_dir(&app)?;
+    let reporter = Reporter::new(app);
+    blocking(move || {
+        let _one = CELLS.lock().unwrap_or_else(|poison| poison.into_inner());
+        let counting = reporter.clone();
+        map_cell(&root, &work, column, row, size.clamp(32.0, 512.0), 400, move |done, total| {
+            counting.count(format!("Exporting the models of cell {column}, {row}"), done, total);
+        })
     })
     .await
 }

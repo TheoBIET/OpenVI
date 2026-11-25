@@ -53,6 +53,7 @@ pub fn run() {
             map::map_info,
             map::map_points,
             map::map_area_preview,
+            map::map_cell_preview,
             audio::audio_bank_list,
             audio::audio_stream_list,
             audio::audio_stream,

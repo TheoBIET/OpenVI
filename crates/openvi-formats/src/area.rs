@@ -165,6 +165,153 @@ fn model_glbs(
         .collect())
 }
 
+/// One entity kept for an area or a cell: its sort key (a distance), model offset, name and glTF transform.
+type Kept = (f32, u64, String, sixng_core::meta7a::GltfTransform);
+
+/// The high-detail entities of the map files whose extent meets `bounds` (`[min x, min y, max x, max y]`, RAGE world
+/// space) that `keep` accepts (given a position, it returns their sort key), sorted by that key; and how many had no
+/// model.
+fn gather(
+    game_root: &Path,
+    work_dir: &Path,
+    bounds: [f32; 4],
+    keep: impl Fn([f32; 3]) -> Option<f32>,
+) -> Result<(Vec<Kept>, usize)> {
+    let index = map_index(game_root, work_dir, |_, _, _| {}, |_, _| {})?;
+    let workspace = Workspace::new(game_root, work_dir);
+    let archive = workspace.resolve(MAP_ARCHIVE)?;
+    let scan = crate::index_cache::load(&workspace.index_dir(), MAP_ARCHIVE)?;
+    let names = model_names(&workspace, &format!("{}_{}", scan.size, scan.mtime));
+    let meets = |region: &[f32; 4]| {
+        region[0] <= bounds[2] && bounds[0] <= region[2] && region[1] <= bounds[3] && bounds[1] <= region[3]
+    };
+    let prefix = format!("{MAP_ARCHIVE}@");
+    let mut found: Vec<Kept> = Vec::new();
+    let mut missing = 0;
+    for region in index.regions.iter().filter(|region| meets(&region.bounds)) {
+        let Some(entry) = scan.entries.iter().find(|entry| entry.off == region.offset) else {
+            continue;
+        };
+        let Ok(resource) = Resource::load_sys(&archive.path, entry) else {
+            continue;
+        };
+        let Some(file) = sixng_core::meta7a::map_file(&resource, &names) else {
+            continue;
+        };
+        for entity in file.entities {
+            // Entities left at the origin are not placed in the world (unplaced templates).
+            let unplaced = entity.position[0].abs() < 1.0 && entity.position[1].abs() < 1.0;
+            if unplaced || !close_up(&entity) {
+                continue;
+            }
+            let Some(key) = keep(entity.position) else {
+                continue;
+            };
+            let offset = entity
+                .model_id
+                .as_deref()
+                .and_then(|id| id.strip_prefix(&prefix))
+                .and_then(|hex| u64::from_str_radix(hex.trim_start_matches("0x"), 16).ok());
+            match offset {
+                Some(offset) => found.push((
+                    key,
+                    offset,
+                    entity.name.clone().unwrap_or_default(),
+                    entity.gltf.clone(),
+                )),
+                None => missing += 1,
+            }
+        }
+    }
+    found.sort_by(|a, b| a.0.total_cmp(&b.0));
+    Ok((found, missing))
+}
+
+/// The distinct models of `found`, first ones first, at most `max_models`.
+fn first_models(found: &[Kept], max_models: usize) -> Vec<u64> {
+    let mut kept: Vec<u64> = Vec::new();
+    let mut seen = HashSet::new();
+    for (_, offset, ..) in found {
+        if seen.insert(*offset) && kept.len() < max_models {
+            kept.push(*offset);
+        }
+    }
+    kept
+}
+
+/// One square cell of the world, for the free-flying view: its manifest (placements in world space, glTF Y-up, so
+/// cells fit together) and what it holds.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cell {
+    pub manifest: PathBuf,
+    pub entities: usize,
+    pub models: usize,
+}
+
+/// Cell `(column, row)` of `size` metres (`[column × size, (column + 1) × size)` in x, the same with rows in y): its
+/// high-detail entities, at most `max_models` models (in the map files' order), exported once and kept as a manifest
+/// in `<work>/cells/<levels.rpf state>/<size>/`, which later requests read at once.
+pub fn map_cell(
+    game_root: &Path,
+    work_dir: &Path,
+    column: i32,
+    row: i32,
+    size: f32,
+    max_models: usize,
+    progress: impl Fn(u64, u64) + Send + Sync + 'static,
+) -> Result<Cell> {
+    let workspace = Workspace::new(game_root, work_dir);
+    let scan = crate::index_cache::load(&workspace.index_dir(), MAP_ARCHIVE)?;
+    let folder = work_dir
+        .join("cells")
+        .join(format!("{}_{}", scan.size, scan.mtime))
+        .join(format!("{size:.0}"));
+    let manifest = folder.join(format!("{column}_{row}.weapon.json"));
+    let cached = std::fs::read(&manifest)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok());
+    if let Some(json) = cached {
+        return Ok(Cell {
+            entities: json["models"].as_array().map_or(0, Vec::len),
+            models: json["distinct"].as_u64().unwrap_or(0) as usize,
+            manifest,
+        });
+    }
+    let (x0, y0) = (column as f32 * size, row as f32 * size);
+    let (found, _) = gather(game_root, work_dir, [x0, y0, x0 + size, y0 + size], |at| {
+        (x0 <= at[0] && at[0] < x0 + size && y0 <= at[1] && at[1] < y0 + size).then_some(0.0)
+    })?;
+    let kept = first_models(&found, max_models);
+    let kept_set: HashSet<u64> = kept.iter().copied().collect();
+    let glbs = model_glbs(&workspace, game_root, work_dir, &kept, progress)?;
+    let models: Vec<Placed> = found
+        .iter()
+        .filter(|(_, offset, ..)| kept_set.contains(offset))
+        .filter_map(|(_, offset, name, transform)| {
+            Some(Placed {
+                name: name.clone(),
+                glb: glbs.get(offset)?.clone(),
+                matrix: compose(transform.translation, transform.rotation, transform.scale),
+            })
+        })
+        .collect();
+    let entities = models.len();
+    std::fs::create_dir_all(&folder)?;
+    let body = serde_json::json!({
+        "kind": "openvi.assembly",
+        "name": format!("cell {column}, {row}"),
+        "distinct": kept.len(),
+        "models": models,
+    });
+    std::fs::write(&manifest, serde_json::to_vec(&body)?)?;
+    Ok(Cell {
+        manifest,
+        entities,
+        models: kept.len(),
+    })
+}
+
 /// The area within `radius` metres of `(x, y)` (RAGE world space), at most `max_models` distinct models (the nearest
 /// first), as an assembly manifest centred on the point. Needs the map index (built first if needed).
 pub fn map_area(
@@ -176,61 +323,14 @@ pub fn map_area(
     max_models: usize,
     progress: impl Fn(u64, u64) + Send + Sync + 'static,
 ) -> Result<Area> {
-    let index = map_index(game_root, work_dir, |_, _, _| {}, |_, _| {})?;
-    let workspace = Workspace::new(game_root, work_dir);
-    let archive = workspace.resolve(MAP_ARCHIVE)?;
-    let scan = crate::index_cache::load(&workspace.index_dir(), MAP_ARCHIVE)?;
-    let names = model_names(&workspace, &format!("{}_{}", scan.size, scan.mtime));
-    let near = |bounds: &[f32; 4]| {
-        bounds[0] - radius <= x && x <= bounds[2] + radius && bounds[1] - radius <= y && y <= bounds[3] + radius
-    };
-    let prefix = format!("{MAP_ARCHIVE}@");
-    // Entities in the circle: (distance, model offset, model name, transform).
-    let mut found: Vec<(f32, u64, String, sixng_core::meta7a::GltfTransform)> = Vec::new();
-    let mut missing = 0;
-    for region in index.regions.iter().filter(|region| near(&region.bounds)) {
-        let Some(entry) = scan.entries.iter().find(|entry| entry.off == region.offset) else {
-            continue;
-        };
-        let Ok(resource) = Resource::load_sys(&archive.path, entry) else {
-            continue;
-        };
-        let Some(file) = sixng_core::meta7a::map_file(&resource, &names) else {
-            continue;
-        };
-        for entity in file.entities {
-            let distance = (entity.position[0] - x).hypot(entity.position[1] - y);
-            // Entities left at the origin are not placed in the world (unplaced templates).
-            let unplaced = entity.position[0].abs() < 1.0 && entity.position[1].abs() < 1.0;
-            if distance > radius || unplaced || !close_up(&entity) {
-                continue;
-            }
-            let offset = entity
-                .model_id
-                .as_deref()
-                .and_then(|id| id.strip_prefix(&prefix))
-                .and_then(|hex| u64::from_str_radix(hex.trim_start_matches("0x"), 16).ok());
-            match offset {
-                Some(offset) => found.push((
-                    distance,
-                    offset,
-                    entity.name.clone().unwrap_or_default(),
-                    entity.gltf.clone(),
-                )),
-                None => missing += 1,
-            }
-        }
-    }
-    // The nearest models first, up to `max_models`.
-    found.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let mut kept: Vec<u64> = Vec::new();
-    let mut seen = HashSet::new();
-    for (_, offset, ..) in &found {
-        if seen.insert(*offset) && kept.len() < max_models {
-            kept.push(*offset);
-        }
-    }
+    let bounds = [x - radius, y - radius, x + radius, y + radius];
+    let (found, mut missing) = gather(game_root, work_dir, bounds, |at| {
+        let distance = (at[0] - x).hypot(at[1] - y);
+        (distance <= radius).then_some(distance)
+    })?;
+    let kept = first_models(&found, max_models);
     let kept_set: HashSet<u64> = kept.iter().copied().collect();
+    let workspace = Workspace::new(game_root, work_dir);
     let glbs = model_glbs(&workspace, game_root, work_dir, &kept, progress)?;
 
     // glTF is Y-up: the point (x, y) is at (x, -y) on the ground plane; heights stay as they are.

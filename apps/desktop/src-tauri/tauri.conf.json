@@ -30,7 +30,8 @@
           "$APPCACHE/work/vehicles/**",
           "$APPCACHE/work/characters/**",
           "$APPCACHE/work/weapons/**",
-          "$APPCACHE/work/areas/**"
+          "$APPCACHE/work/areas/**",
+          "$APPCACHE/work/cells/**"
         ]
       }
     }

@@ -55,6 +55,15 @@ export function mapArea(root: string, x: number, y: number, radius: number): Pro
   return invoke<MapArea>('map_area_preview', { root, x, y, radius });
 }
 
+/** Side of the world's cells in the free-flying view, metres. */
+export const CELL = 128;
+
+/** Cell `(column, row)` of the world (`size` metres) for the free-flying view: the manifest of its models. */
+export async function mapCell(root: string, column: number, row: number, size: number): Promise<string> {
+  const cell = await invoke<{ manifest: string }>('map_cell_preview', { root, column, row, size });
+  return cell.manifest;
+}
+
 /** Entry `index` of a typed array (0 past its end). */
 export function at(array: Float32Array | Uint32Array, index: number): number {
   return array[index] ?? 0;

@@ -1,4 +1,4 @@
-import { ArrowLeft, Box, Crosshair, Map as MapIcon, Search } from 'lucide-react';
+import { ArrowLeft, Box, Crosshair, Map as MapIcon, Plane, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
@@ -7,6 +7,7 @@ import type { MapHandle, MapPoints } from '../lib/mapScene';
 import { LoadingPanel, StepProgress } from './LoadingPanel';
 import { ModelView } from './ModelView';
 import { PreviewPane, PreviewSection, Properties } from './preview';
+import { WorldView } from './WorldView';
 
 type Loaded =
   | { state: 'loading' }
@@ -43,8 +44,10 @@ export function MapView({
     | null
   >(null);
 
-  /** The 3D area replaces the map: its scene is mounted again when the map comes back. */
-  const mapHidden = area !== null;
+  /** The free-flying world, from this point. */
+  const [world, setWorld] = useState<{ x: number; y: number } | null>(null);
+  /** The 3D area or the world replace the map: its scene is mounted again when the map comes back. */
+  const mapHidden = area !== null || world !== null;
 
   function openArea(x: number, y: number) {
     setArea({ state: 'loading', x, y });
@@ -144,6 +147,7 @@ export function MapView({
   }
 
   const { info, points } = loaded;
+  if (world) return <WorldView root={root} points={points} start={world} onBack={() => setWorld(null)} />;
   if (area) {
     const back = (
       <button
@@ -201,12 +205,24 @@ export function MapView({
           </span>
           <button
             type="button"
+            title="Fly through the world from the centre of the view"
+            onClick={() => {
+              const centre = handle.current?.center();
+              if (centre) setWorld(centre);
+            }}
+            className="ml-auto inline-flex h-6 items-center gap-1 rounded-sm bg-accent-gradient px-2 font-semibold text-on-accent"
+          >
+            <Plane className="size-3.5" />
+            Fly here
+          </button>
+          <button
+            type="button"
             title="See the area around the centre of the view in 3D (100 m around)"
             onClick={() => {
               const centre = handle.current?.center();
               if (centre) openArea(centre.x, centre.y);
             }}
-            className="ml-auto inline-flex h-6 items-center gap-1 rounded-sm bg-accent-gradient px-2 font-semibold text-on-accent"
+            className="inline-flex h-6 items-center gap-1 rounded-sm px-2 text-foreground hover:bg-muted"
           >
             <Box className="size-3.5" />
             3D here
@@ -273,6 +289,16 @@ export function MapView({
               >
                 <Box className="size-3.5" />
                 3D around
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setWorld({ x: at(points.positions, picked * 3), y: at(points.positions, picked * 3 + 1) })
+                }
+                className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-xs text-foreground hover:bg-muted"
+              >
+                <Plane className="size-3.5" />
+                Fly here
               </button>
             </div>
           </PreviewSection>

@@ -94,9 +94,10 @@ export function InteriorsView({
           className="flex-1 overflow-auto outline-none"
         >
           {rows.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground">No interior matches.</p>}
-          {rows.map((interior) => (
+          {rows.map((interior, index) => (
             <div
-              key={idOf(interior)}
+              // The same interior can be placed twice at one spot.
+              key={`${idOf(interior)}#${index}`}
               role="row"
               data-row={idOf(interior)}
               title="Double-click to see it on the map"

@@ -194,7 +194,7 @@ function loadingManager(glbPath: string, failed: string[]): THREE.LoadingManager
 }
 
 /** A model loaded: its scene and animations, how many of its textures loaded and the files of those that did not. */
-type LoadedModel = {
+export type LoadedModel = {
   scene: THREE.Object3D;
   animations: THREE.AnimationClip[];
   textures: number;
@@ -209,7 +209,7 @@ function entryOf(json: unknown, key: string, index: unknown): object | null {
   return typeof entry === 'object' && entry !== null ? entry : null;
 }
 
-async function loadGlb(path: string, failed: string[]): Promise<LoadedModel> {
+export async function loadGlb(path: string, failed: string[]): Promise<LoadedModel> {
   const loader = new GLTFLoader(loadingManager(path, failed));
   loader.setResourcePath(RESOURCE);
   const gltf = await loader.loadAsync(convertFileSrc(path));
