@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.16.3 (2026-11-25)
+
+- Releases stay drafts until every platform is built, then are published: an installed copy no longer finds a
+  "latest" release without its update file. 0.16.1 and 0.16.2 were never published; their changes ship here.
+
 ## 0.16.2 (2026-11-25)
 
 - 3D view: the texture count is the textures of the model that loaded, and "missing" lists the files of those that
