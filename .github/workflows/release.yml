@@ -31,12 +31,13 @@ jobs:
           } >> notes.md
           cat notes.md
           { echo "notes<<NOTES_END"; cat notes.md; echo NOTES_END; } >> "$GITHUB_OUTPUT"
-      - name: Create it, or keep the one there
+      # A draft until every platform is built: `releases/latest` (and its latest.json) moves only then.
+      - name: Create it as a draft, or keep the one there
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 \
-            || gh release create "$GITHUB_REF_NAME" --title "OpenVI $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+            || gh release create "$GITHUB_REF_NAME" --title "OpenVI $GITHUB_REF_NAME" --notes-file notes.md --verify-tag --draft
 
   build:
     name: Build (${{ matrix.name }})
@@ -79,8 +80,18 @@ jobs:
           releaseName: OpenVI ${{ github.ref_name }}
           # Also the notes installed copies show beside "Update to x.y.z" (latest.json).
           releaseBody: ${{ needs.release.outputs.notes }}
-          releaseDraft: false
+          releaseDraft: true
           includeUpdaterJson: true
           # Windows updates install the NSIS setup (.exe), not the MSI.
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish it, now that every installer and latest.json are there
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
