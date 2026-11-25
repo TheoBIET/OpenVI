@@ -75,6 +75,10 @@ State of the work and the next task, for whoever picks it up. Update it when you
   `packs.rpf`.** Finishes (`matlib::weapon_finishes`) are not offered yet.
 - **Done (0.17.0):** Clothes section (generic garments by slot and cut, tried on a mannequin). **Never seen: needs
   `packs.rpf`.** Wardrobe items (style, colour tags, presets: `sixng_core::wardrobe`) need the texture-users index.
+- **Done (0.18.0):** Text section; vehicle catalog cached (104 s → 7 s on the maintainer's install, debug build);
+  growing archives not rescanned; checkpoints removed after a scan. Measured on real data (local profile example,
+  not committed): character list 2.6 s, weapon list 0.1 s, garment list 0.1 s, clip dictionaries 0.2 s, a vehicle's
+  first export 7 to 12 s per configuration, a weapon's first assembly 4 s.
 - **Releasing:** `pnpm bump x.y.z`, CHANGELOG entry, commit, `git tag -a vx.y.z`, push `main`, then push the tag
   alone (`git push origin vx.y.z`) once the maintainer agrees: that builds and publishes the release. Pushing more
   than three tags at once starts no workflow.

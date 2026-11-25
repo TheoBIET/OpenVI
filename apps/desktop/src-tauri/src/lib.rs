@@ -13,6 +13,7 @@ mod model;
 mod progress;
 mod resource;
 mod scans;
+mod text;
 mod weapons;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -43,6 +44,7 @@ pub fn run() {
             characters::characters,
             weapons::weapons,
             clothes::clothes,
+            text::game_text,
             clothes::garment_preview,
             weapons::weapon_part_list,
             weapons::weapon_preview,

@@ -12,6 +12,7 @@ pub mod clothes;
 pub mod fixtures;
 pub mod index_cache;
 pub mod model;
+pub mod text;
 pub mod weapons;
 
 use std::path::Path;
@@ -193,6 +194,13 @@ pub fn scan_archive(
         )?;
         scan::save_index(cache_dir, &index)?;
     }
+    // The scan is saved whole: its segment checkpoints (only there to resume an interrupted scan, one set per size
+    // and time of the archive) would pile up at every change, a gigabyte at a time for the big archives.
+    if let Some(stem) = Path::new(archive_id).file_stem() {
+        let mut checkpoints = stem.to_os_string();
+        checkpoints.push(".segs");
+        let _ = std::fs::remove_dir_all(cache_dir.join(checkpoints));
+    }
 
     let entries = index.entries.into_iter().map(ArchiveEntry::from).collect();
     Ok(ArchiveScan {
@@ -201,16 +209,30 @@ pub fn scan_archive(
     })
 }
 
-/// The cached scan of `archive_id`, when it is complete (names included) and matches the archive on disk.
+/// How long after its last change an archive that grew is taken as still being written (a download in progress).
+const SETTLING: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+
+/// The cached scan of `archive_id`, when it is complete (names included) and matches the archive on disk; or, while
+/// the archive is still growing (bigger than when scanned and changed in the last minutes: a download), the scan of
+/// its earlier part, so it is not read again in full at every change (SixNG's checkpoints are keyed by size and
+/// time). It is scanned again once it has settled.
 fn current_scan(path: &Path, archive_id: &str, cache_dir: &Path) -> Option<std::sync::Arc<scan::ArchiveIndex>> {
     let metadata = std::fs::metadata(path).ok()?;
-    let mtime = metadata
-        .modified()
-        .ok()
+    let modified = metadata.modified().ok();
+    let mtime = modified
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
         .map_or(0, |duration| duration.as_secs());
     let index = index_cache::load(cache_dir, archive_id).ok()?;
-    (index.names_done && index.size == metadata.len() && index.mtime == mtime).then_some(index)
+    if !index.names_done {
+        return None;
+    }
+    let same = index.size == metadata.len() && index.mtime == mtime;
+    // A download either grows the file or fills one created at its final size: either way it keeps changing.
+    let being_written = metadata.len() >= index.size
+        && modified
+            .and_then(|time| time.elapsed().ok())
+            .is_some_and(|age| age < SETTLING);
+    (same || being_written).then_some(index)
 }
 
 impl From<scan::Entry> for ArchiveEntry {
@@ -421,6 +443,30 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn keeps_the_scan_of_an_archive_still_growing() {
+        let dir = temp_dir("growing");
+        let archive = dir.join("common.rpf");
+        let (mut bytes, _) = fixtures::archive();
+        std::fs::write(&archive, &bytes).unwrap();
+        let first = scan_archive(&archive, "common.rpf", &dir.join("cache"), |_, _, _| {}).unwrap();
+        // A download goes on: the archive grows, just now. No new scan (its progress would be reported).
+        bytes.extend(std::iter::repeat_n(0u8, 4096));
+        std::fs::write(&archive, &bytes).unwrap();
+        let carved = Arc::new(Mutex::new(false));
+        let seen = Arc::clone(&carved);
+        let again = scan_archive(&archive, "common.rpf", &dir.join("cache"), move |phase, _, _| {
+            if phase == ScanPhase::Carving {
+                *seen.lock().unwrap() = true;
+            }
+        })
+        .unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        assert!(!*carved.lock().unwrap());
+        assert_eq!(again.entries.len(), first.entries.len());
     }
 
     #[test]

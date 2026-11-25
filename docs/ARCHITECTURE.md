@@ -187,6 +187,12 @@ filters the list; Enter searches the whole index, and opening a result opens its
 - Long operations behind the sections report each step as `catalog-progress` (`progress.rs`: label, count, bytes or
   items); a scan waiting for the same archive's scan started elsewhere says so (`scans::scan_reported`). The frontend
   shows a filled bar for a counted step and a sweeping bar otherwise (`LoadingPanel.tsx`).
+- The vehicle catalog's tables (`<work>/catalog`) are decoded again only when `packs.rpf` or `data.rpf` is newer.
+- An archive changed in the last ten minutes and no smaller than when scanned is taken as being written (a download):
+  its earlier scan is used until it settles (`current_scan`). A finished scan removes its segment checkpoints
+  (`<work>/index/<archive>.segs`), which SixNG keys by size and time.
+- The game text (`openvi_formats::text`): English tables told apart by their words, read once per state of
+  `data.rpf` into `<work>/index/text.<state>.json` and memory, searched in memory.
 - Windows: `build.rs` embeds tauri-build's manifest (Common Controls 6) in every executable through the linker, so the
   test executables start.
 - Animations: the character is assembled once (`character_glb` without a clip); a clip is exported on its own with

@@ -194,6 +194,18 @@ fn outfits_of(game_root: &Path, archive: &ArchiveInfo, index: &ArchiveIndex, nam
     Ok(outfits)
 }
 
+/// The first option of each group, in the order `character_parts` lists them (group, then label).
+fn first_of_each_group(options: &[outfit::PartOpt]) -> Vec<u64> {
+    let mut sorted: Vec<&outfit::PartOpt> = options.iter().collect();
+    sorted.sort_by(|a, b| (&a.group, &a.label).cmp(&(&b.group, &b.label)));
+    let mut seen = HashSet::new();
+    sorted
+        .into_iter()
+        .filter(|option| seen.insert(option.group.clone()))
+        .map(|option| option.off)
+        .collect()
+}
+
 fn options_of(index: &ArchiveIndex, name: &str) -> Vec<outfit::PartOpt> {
     let name = name.to_ascii_lowercase();
     if outfit::is_animal(&name) {
@@ -248,6 +260,13 @@ pub fn character_parts(game_root: &Path, work_dir: &Path, name: &str) -> Result<
     }
     ensure!(!parts.is_empty(), "{name} has no parts in {CHARACTER_PARTS}");
     parts.sort_by(|a, b| (&a.group, !a.default, &a.label).cmp(&(&b.group, !b.default, &b.label)));
+    // Nothing marked default (some prefixes): the first part of each group, as `character_glb` wears them.
+    if !parts.iter().any(|part| part.default) {
+        let mut seen = HashSet::new();
+        for part in &mut parts {
+            part.default = seen.insert(part.group.clone());
+        }
+    }
     let outfits = outfits
         .into_iter()
         .map(|(label, worn)| CharacterLook {
@@ -292,13 +311,13 @@ pub fn character_glb(
                 .map(|option| option.off)
                 .collect();
             if own.is_empty() {
-                // A ped model: its first outfit.
+                // A ped model: its first outfit; else (parts named after it, none marked default) the first part of
+                // each group, as `character_parts` marks them.
                 let outfits = outfits_for(game_root, &workspace, &index, &name)?.unwrap_or_default();
-                outfits
-                    .into_iter()
-                    .next()
-                    .map(|(_, worn)| worn.into_iter().map(|(offset, ..)| offset).collect())
-                    .unwrap_or_default()
+                match outfits.into_iter().next() {
+                    Some((_, worn)) => worn.into_iter().map(|(offset, ..)| offset).collect(),
+                    None => first_of_each_group(&options_of(&index, &name)),
+                }
             } else {
                 own
             }
