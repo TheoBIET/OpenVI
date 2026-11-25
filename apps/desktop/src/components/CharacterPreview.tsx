@@ -141,7 +141,11 @@ export function CharacterPreview({ root, character }: { root: string; character:
             <p className="text-muted-foreground">Complete looks the game dresses {character.name} in.</p>
           </header>
           <div className="overflow-auto">
-            {parts.state === 'loading' && <p className="px-3 py-2 text-muted-foreground">Reading…</p>}
+            {parts.state === 'loading' && (
+              <p className="px-3 py-2 text-muted-foreground">
+                Reading the outfits (the very first time reads the whole wardrobe: about two minutes)…
+              </p>
+            )}
             {parts.state === 'ready' && outfits.length === 0 && (
               <p className="px-3 py-2 text-muted-foreground">None: {outfitsNote ?? 'the outfit list names none.'}</p>
             )}

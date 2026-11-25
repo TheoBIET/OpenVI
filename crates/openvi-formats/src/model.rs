@@ -154,7 +154,8 @@ pub fn model_glb(game_root: &Path, work_dir: &Path, archive_id: &str, offset: u6
             bail!("SixNG could not export this model: {error}");
         }
         if let Some(file) = item.files.iter().find(|file| file.ends_with("model.glb")) {
-            return Ok(out.join(file));
+            // SixNG names files with forward slashes: one separator throughout.
+            return Ok(out.join(file.split('/').collect::<PathBuf>()));
         }
         if item.status != "skipped" {
             bail!("SixNG exported no mesh for this model (status {})", item.status);
@@ -278,7 +279,7 @@ pub fn material_report(glb: &Path) -> Result<Vec<MaterialReport>> {
     let resolve = |file: &str| {
         folder
             .ancestors()
-            .map(|base| base.join(file))
+            .map(|base| base.join(file.split('/').collect::<PathBuf>()))
             .find(|candidate| candidate.is_file())
     };
     Ok(json["materials"]

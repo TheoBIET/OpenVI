@@ -150,7 +150,7 @@ fn model_glbs(
                 .and_then(|item| item.files.iter().find(|file| file.ends_with("model.glb")));
             match glb {
                 Some(file) => {
-                    known.insert(entry.off, out.join(file));
+                    known.insert(entry.off, out.join(file.split('/').collect::<PathBuf>()));
                 }
                 None => again.push(entry),
             }

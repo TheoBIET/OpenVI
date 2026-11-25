@@ -174,15 +174,15 @@ const RESOURCE = 'openvi-resource:';
  * resolving `textures/a.png` against the GLB's URL would land at the server root, and every texture would fail.
  */
 function loadingManager(glbPath: string, failed: string[]): THREE.LoadingManager {
-  const cut = Math.max(glbPath.lastIndexOf('\\'), glbPath.lastIndexOf('/'));
-  const folder = glbPath.slice(0, cut);
-  const separator = glbPath[cut] ?? '/';
+  // A path can mix separators (`…\models/data/…/model.glb` on Windows): split on both, join with the platform's.
+  const separator = glbPath.includes('\\') ? '\\' : '/';
+  const folder = glbPath.split(/[\\/]/).slice(0, -1);
   const manager = new THREE.LoadingManager();
   manager.setURLModifier((url) => {
     if (!url.startsWith(RESOURCE)) return url;
     // Resolve `.` and `..` here: a texture shared between exports can sit in a sibling folder, and the asset
     // protocol's scope check wants a plain path.
-    const parts = folder.split(separator);
+    const parts = [...folder];
     for (const part of decodeURIComponent(url.slice(RESOURCE.length)).split('/')) {
       if (part === '..') parts.pop();
       else if (part !== '.' && part !== '') parts.push(part);

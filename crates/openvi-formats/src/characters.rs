@@ -215,12 +215,34 @@ fn options_of(index: &ArchiveIndex, name: &str) -> Vec<outfit::PartOpt> {
     }
 }
 
+/// Builds, once, the index of which textures each model of `packs.rpf` uses (`sixng_core::texusers`): the outfit
+/// list names a garment by its textures, so no outfit resolves without it. Takes a few minutes the first time
+/// (`progress` counts models); kept in `<work>/index/texture_users.jsonl.gz`.
+pub fn prepare_outfits(
+    game_root: &Path,
+    work_dir: &Path,
+    progress: impl Fn(u64, u64) + Send + Sync + 'static,
+) -> Result<()> {
+    let workspace = Workspace::new(game_root, work_dir);
+    if sixng_core::texusers::path(&workspace).is_file() {
+        return Ok(());
+    }
+    let archives = sixng_core::texusers::archives(&workspace, &[CHARACTER_PARTS.to_string()])?;
+    sixng_core::texusers::build(
+        &workspace,
+        &archives,
+        std::sync::Arc::new(move |_, done, total| progress(done, total)),
+    )?;
+    Ok(())
+}
+
 /// The outfits of the outfit list for `name`, or why it has none (animals have none).
 fn outfits_for(game_root: &Path, workspace: &Workspace, index: &ArchiveIndex, name: &str) -> Result<Outfits> {
     if outfit::is_animal(name) {
         return Ok(Err("animals have no outfits: their parts make them".into()));
     }
     let archive = workspace.resolve(CHARACTER_PARTS)?;
+    prepare_outfits(game_root, workspace.work.as_path(), |_, _| {})?;
     Ok(outfits_of(game_root, &archive, index, name))
 }
 
@@ -387,7 +409,7 @@ pub(crate) fn assemble(
         None => (None, "still".into()),
     };
     if let Some(key) = &clip_key {
-        let text = format!("{key}/{skeleton_only}");
+        let text = format!("{key}/{skeleton_only}/in-place");
         look = text.bytes().fold(look, |hash, byte| fnv(hash, u64::from(byte)));
     }
     let sources = format!(
@@ -445,7 +467,8 @@ pub(crate) fn assemble(
             &options(folder, force)?,
             &clips,
             skeleton_only,
-            false,
+            // A clip plays on the spot (root motion removed), so the character stays in view.
+            !clips.is_empty(),
         )?;
         if out.is_file() {
             break;

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use openvi_formats::characters::{
-    CHARACTER_PARTS, Character, CharacterParts, character_glb, character_list, character_parts,
+    CHARACTER_PARTS, Character, CharacterParts, character_glb, character_list, character_parts, prepare_outfits,
 };
 use tauri::AppHandle;
 
@@ -16,7 +16,13 @@ fn list(root: &Path, work: &Path, database: &Path, reporter: &Reporter) -> Resul
     // data.rpf: the game text that gives ped models the name the game shows.
     scan_all(root, work, database, &[CHARACTER_PARTS, "data.rpf"], reporter)?;
     reporter.step("Listing the characters, animals and ped models (the first time names them, about half a minute)…");
-    character_list(root, work, |_, _, _| {})
+    let list = character_list(root, work, |_, _, _| {})?;
+    // The outfits need to know which textures each part uses: indexed once, the first time.
+    let counting = reporter.clone();
+    prepare_outfits(root, work, move |done, total| {
+        counting.count("Indexing the textures of the character parts (once)", done, total);
+    })?;
+    Ok(list)
 }
 
 async fn blocking<T: Send + 'static>(job: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T, String> {
