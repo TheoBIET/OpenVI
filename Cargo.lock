@@ -2729,7 +2729,7 @@ checksum = "7e036b411754132fd6b74e94b74e9a13c5cf606fa93d1885c35860d3060820b1"
 
 [[package]]
 name = "openvi"
-version = "0.16.3"
+version = "0.16.4"
 dependencies = [
  "anyhow",
  "dunce",
@@ -2747,7 +2747,7 @@ dependencies = [
 
 [[package]]
 name = "openvi-formats"
-version = "0.16.3"
+version = "0.16.4"
 dependencies = [
  "anyhow",
  "flate2",
@@ -2760,7 +2760,7 @@ dependencies = [
 
 [[package]]
 name = "openvi-index"
-version = "0.16.3"
+version = "0.16.4"
 dependencies = [
  "anyhow",
  "openvi-formats",
