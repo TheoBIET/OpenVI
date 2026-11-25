@@ -327,6 +327,7 @@ pub(crate) fn assemble(
     clip: Option<ClipSource>,
     skeleton_only: bool,
 ) -> Result<PathBuf> {
+    crate::model::prune_stale_exports(game_root, work_dir);
     ensure!(
         !skeleton_only || clip.is_some(),
         "a skeleton alone needs a clip to show"

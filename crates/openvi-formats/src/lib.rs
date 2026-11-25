@@ -5,6 +5,7 @@
 //! data area is plain zlib, so resources are found by carving those streams and sniffing their first bytes.
 
 pub mod animations;
+pub mod area;
 pub mod audio;
 pub mod catalog;
 pub mod characters;

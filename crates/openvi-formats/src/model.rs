@@ -67,6 +67,45 @@ pub(crate) fn stores_version(game_root: &Path) -> String {
     format!("t{hash:016x}")
 }
 
+/// Removes, once per run, the export folders of states the game folder is no longer in: every archive or texture
+/// store that changed (a download, an update) left its own folder of models, vehicles, characters and weapons, a
+/// gigabyte or more. A folder is kept when its first name part is the state of a present archive and any texture
+/// store part is the stores' current state.
+pub(crate) fn prune_stale_exports(game_root: &Path, work_dir: &Path) {
+    static DONE: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    DONE.get_or_init(|| {
+        let workspace = sixng_core::export::Workspace::new(game_root, work_dir);
+        let archives: std::collections::HashSet<String> = workspace
+            .archives()
+            .iter()
+            .map(|archive| version(&archive.path))
+            .collect();
+        // No archive found (the game folder moved): nothing can be told stale.
+        if archives.is_empty() {
+            return;
+        }
+        let stores = stores_version(game_root);
+        let is_stores = |part: &str| part.len() == 17 && part.starts_with('t');
+        for kind in ["models", "vehicles", "characters", "weapons"] {
+            let Ok(folders) = std::fs::read_dir(work_dir.join(kind)) else {
+                continue;
+            };
+            for folder in folders.flatten() {
+                let name = folder.file_name().to_string_lossy().into_owned();
+                let mut parts = name.split('_');
+                let current = parts.next().is_some_and(|first| archives.contains(first))
+                    && name
+                        .split('_')
+                        .filter(|part| is_stores(part))
+                        .all(|part| part == stores);
+                if !current {
+                    let _ = std::fs::remove_dir_all(folder.path());
+                }
+            }
+        }
+    });
+}
+
 /// Whether `output` is missing or older than any of `inputs` that exist.
 pub(crate) fn stale(output: &Path, inputs: &[PathBuf]) -> bool {
     let modified = |path: &Path| std::fs::metadata(path).and_then(|m| m.modified()).ok();
@@ -93,6 +132,7 @@ fn is_model(entry: &sixng_core::scan::Entry) -> bool {
 
 /// The model at `offset` in the archive `archive_id` (already scanned into `<work>/index`), as a GLB file.
 pub fn model_glb(game_root: &Path, work_dir: &Path, archive_id: &str, offset: u64) -> Result<PathBuf> {
+    prune_stale_exports(game_root, work_dir);
     let workspace = Workspace::new(game_root, work_dir);
     let archive = workspace.resolve(archive_id)?;
     let index = crate::index_cache::load(&workspace.index_dir(), &archive.id)?;
@@ -133,6 +173,7 @@ pub fn vehicle_glb(
     config: usize,
     progress: impl Fn(ScanPhase, u64, u64) + Send + Sync + 'static,
 ) -> Result<PathBuf> {
+    prune_stale_exports(game_root, work_dir);
     let model = model.to_ascii_lowercase();
     let sources = format!(
         "{}_{}_{}",

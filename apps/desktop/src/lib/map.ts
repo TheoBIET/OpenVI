@@ -47,6 +47,14 @@ export function mapPoints(root: string): Promise<ArrayBuffer> {
   return cached(buffers, root, () => invoke<ArrayBuffer>('map_points', { root }));
 }
 
+/** An area of the map put together in 3D. */
+export type MapArea = { manifest: string; entities: number; models: number; missing: number };
+
+/** The area within `radius` metres of `(x, y)` in 3D (its models are exported the first time: a minute or more). */
+export function mapArea(root: string, x: number, y: number, radius: number): Promise<MapArea> {
+  return invoke<MapArea>('map_area_preview', { root, x, y, radius });
+}
+
 /** Entry `index` of a typed array (0 past its end). */
 export function at(array: Float32Array | Uint32Array, index: number): number {
   return array[index] ?? 0;

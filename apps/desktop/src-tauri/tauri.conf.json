@@ -29,7 +29,8 @@
           "$APPCACHE/work/models/**",
           "$APPCACHE/work/vehicles/**",
           "$APPCACHE/work/characters/**",
-          "$APPCACHE/work/weapons/**"
+          "$APPCACHE/work/weapons/**",
+          "$APPCACHE/work/areas/**"
         ]
       }
     }

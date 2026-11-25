@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
+use openvi_formats::area::{Area, map_area};
 use openvi_formats::map::{Interior, MAP_ARCHIVE, MapSummary, map_index};
 use serde::Serialize;
 use tauri::AppHandle;
@@ -65,6 +66,31 @@ pub async fn map_points(app: AppHandle, root: PathBuf) -> Result<Response, Strin
         Ok(Response::new(
             map_index(&root, &work, |_, _, _| {}, |_, _| {})?.points(),
         ))
+    })
+    .await
+}
+
+/// The area within `radius` metres of `(x, y)` in 3D: its models exported (the first time; counted as
+/// `catalog-progress`) and placed, as an assembly manifest.
+#[tauri::command]
+pub async fn map_area_preview(app: AppHandle, root: PathBuf, x: f32, y: f32, radius: f32) -> Result<Area, String> {
+    let root = index::canonical_root(&root)?;
+    let work = index::work_dir(&app)?;
+    let reporter = Reporter::new(app);
+    blocking(move || {
+        reporter.step("Finding what stands here…");
+        let counting = reporter.clone();
+        map_area(
+            &root,
+            &work,
+            x,
+            y,
+            radius.clamp(20.0, 250.0),
+            300,
+            move |done, total| {
+                counting.count("Exporting the models of the area", done, total);
+            },
+        )
     })
     .await
 }

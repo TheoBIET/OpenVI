@@ -1,10 +1,11 @@
-import { Crosshair, Map as MapIcon, Search } from 'lucide-react';
+import { ArrowLeft, Box, Crosshair, Map as MapIcon, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type CatalogProgress, onCatalogProgress } from '../lib/catalog';
-import { at, type MapInfo, mapInfo, mapPoints } from '../lib/map';
+import { at, type MapArea, mapArea, type MapInfo, mapInfo, mapPoints } from '../lib/map';
 import type { MapHandle, MapPoints } from '../lib/mapScene';
-import { LoadingPanel } from './LoadingPanel';
+import { LoadingPanel, StepProgress } from './LoadingPanel';
+import { ModelView } from './ModelView';
 import { PreviewPane, PreviewSection, Properties } from './preview';
 
 type Loaded =
@@ -34,6 +35,24 @@ export function MapView({
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<MapHandle | null>(null);
   const [showInteriors, setShowInteriors] = useState(true);
+  /** The area shown in 3D: being put together, ready, or failed. */
+  const [area, setArea] = useState<
+    | { state: 'loading'; x: number; y: number }
+    | { state: 'ready'; x: number; y: number; value: MapArea }
+    | { state: 'failed'; error: string }
+    | null
+  >(null);
+
+  /** The 3D area replaces the map: its scene is mounted again when the map comes back. */
+  const mapHidden = area !== null;
+
+  function openArea(x: number, y: number) {
+    setArea({ state: 'loading', x, y });
+    mapArea(root, x, y, 100).then(
+      (value) => setArea({ state: 'ready', x, y, value }),
+      (error: unknown) => setArea({ state: 'failed', error: String(error) }),
+    );
+  }
 
   useEffect(() => {
     let current = true;
@@ -52,7 +71,7 @@ export function MapView({
   }, [root]);
 
   useEffect(() => {
-    if (loaded.state !== 'ready' || !host.current) return;
+    if (loaded.state !== 'ready' || !host.current || mapHidden) return;
     let disposed = false;
     const element = host.current;
     void import('../lib/mapScene').then(({ mountMap }) => {
@@ -68,7 +87,7 @@ export function MapView({
       handle.current?.dispose();
       handle.current = null;
     };
-  }, [loaded]);
+  }, [loaded, mapHidden]);
 
   // Models whose name contains the filter.
   const matching = useMemo(() => {
@@ -125,6 +144,47 @@ export function MapView({
   }
 
   const { info, points } = loaded;
+  if (area) {
+    const back = (
+      <button
+        type="button"
+        onClick={() => setArea(null)}
+        className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+      >
+        <ArrowLeft className="size-3.5" />
+        Map
+      </button>
+    );
+    if (area.state === 'ready') {
+      return (
+        <ModelView
+          path={area.value.manifest}
+          title={`Around ${area.x.toFixed(0)}, ${area.y.toFixed(0)} · ${area.value.entities.toLocaleString('en-US')} entities, ${area.value.models} models`}
+          actions={back}
+          banner={
+            area.value.missing > 0 ? `${area.value.missing} entities left out (no model found or exported).` : null
+          }
+        />
+      );
+    }
+    return (
+      <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 p-10 text-xs">
+        {area.state === 'loading' ? (
+          <div className="flex w-96 flex-col items-center text-center">
+            <Box className="mb-3 size-8 text-primary" />
+            <h2 className="font-title text-foreground">Putting the area together in 3D</h2>
+            <p className="mt-1 mb-4 text-muted-foreground">
+              The first time exports every model within 100 m (a minute or more); then they are reused.
+            </p>
+            <StepProgress step={progress} idle="Starting…" />
+          </div>
+        ) : (
+          <p className="text-destructive">{area.error}</p>
+        )}
+        {back}
+      </main>
+    );
+  }
   const model = picked === null ? null : (info.models[at(points.models, picked)] ?? null);
   const instances =
     picked === null ? 0 : points.models.reduce((sum, value) => sum + (value === at(points.models, picked) ? 1 : 0), 0);
@@ -139,7 +199,19 @@ export function MapView({
             models · {info.summary.files.toLocaleString('en-US')} map files ·{' '}
             {Math.round(maxX - minX).toLocaleString('en-US')} × {Math.round(maxY - minY).toLocaleString('en-US')} m
           </span>
-          <label className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            title="See the area around the centre of the view in 3D (100 m around)"
+            onClick={() => {
+              const centre = handle.current?.center();
+              if (centre) openArea(centre.x, centre.y);
+            }}
+            className="ml-auto inline-flex h-6 items-center gap-1 rounded-sm bg-accent-gradient px-2 font-semibold text-on-accent"
+          >
+            <Box className="size-3.5" />
+            3D here
+          </button>
+          <label className="flex items-center gap-1">
             <input
               type="checkbox"
               checked={showInteriors}
@@ -193,6 +265,14 @@ export function MapView({
               >
                 <Crosshair className="size-3.5" />
                 Zoom in
+              </button>
+              <button
+                type="button"
+                onClick={() => openArea(at(points.positions, picked * 3), at(points.positions, picked * 3 + 1))}
+                className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-xs text-foreground hover:bg-muted"
+              >
+                <Box className="size-3.5" />
+                3D around
               </button>
             </div>
           </PreviewSection>

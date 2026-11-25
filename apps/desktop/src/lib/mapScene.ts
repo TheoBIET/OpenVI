@@ -39,6 +39,8 @@ export type MapHandle = {
   highlight: (models: ReadonlySet<number> | null) => void;
   /** Centres the view on `x, y` (metres) at about `span` metres across. */
   focus: (x: number, y: number, span: number) => void;
+  /** The point at the centre of the view, metres. */
+  center: () => { x: number; y: number };
   /** Shows or hides the interiors' squares. */
   showInteriors: (shown: boolean) => void;
   /** Marks one entity (or none). */
@@ -223,6 +225,9 @@ export function mountMap(
       camera.position.set(x, y, 5);
       camera.zoom = Math.min(Math.max(span / Math.max(wanted, 1), controls.minZoom), controls.maxZoom);
       camera.updateProjectionMatrix();
+    },
+    center() {
+      return { x: controls.target.x, y: controls.target.y };
     },
     showInteriors(shown) {
       interiorLayer.visible = shown;

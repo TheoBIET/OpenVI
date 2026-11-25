@@ -265,20 +265,24 @@ async function loadModel(path: string, failed: string[]): Promise<LoadedModel> {
   const models: unknown = typeof manifest === 'object' && manifest !== null ? Reflect.get(manifest, 'models') : null;
   if (!Array.isArray(models) || !models.every(isAssemblyPart)) throw new Error(`${path} is not an assembly`);
   const group = new THREE.Group();
-  const parts = await Promise.all(
-    models.map(async (part) => {
-      const loaded = await loadGlb(part.glb, failed);
-      loaded.scene.name = part.name;
-      loaded.scene.applyMatrix4(new THREE.Matrix4().fromArray(part.matrix));
-      return loaded;
-    }),
-  );
-  group.add(...parts.map((part) => part.scene));
+  // A model placed many times (a map area's trees, lamps…) is loaded once; each placement is a clone sharing its
+  // geometry and materials.
+  const unique = [...new Set(models.map((part) => part.glb))];
+  const loaded = new Map(await Promise.all(unique.map(async (glb) => [glb, await loadGlb(glb, failed)] as const)));
+  for (const part of models) {
+    const source = loaded.get(part.glb);
+    if (!source) continue;
+    const placed = source.scene.clone();
+    placed.name = part.name;
+    placed.applyMatrix4(new THREE.Matrix4().fromArray(part.matrix));
+    group.add(placed);
+  }
+  const sources = [...loaded.values()];
   return {
     scene: group,
     animations: [],
-    textures: parts.reduce((sum, part) => sum + part.textures, 0),
-    missing: parts.flatMap((part) => part.missing),
+    textures: sources.reduce((sum, source) => sum + source.textures, 0),
+    missing: sources.flatMap((source) => source.missing),
   };
 }
 

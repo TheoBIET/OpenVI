@@ -149,7 +149,14 @@ the clip, and its sources `anim.rpf`'s state.
   bytes and drawn as three.js points under an orthographic camera (`lib/mapScene.ts`, `MapControls`); picking goes
   through a 64 m grid. The same pass reads the interior instances (`meta7a::mlo_instances`: world position, archetype)
   and definitions (`meta7a::mlos`: rooms, entities, sets), joined by archetype hash, for the Interiors section and
-  the map's interior layer (`map2.<state>.*` caches). Interior contents (interior space) are not drawn yet.
+  the map's interior layer. The index keeps each map file's extent (`map3.<state>.*` caches).
+- `openvi_formats::area`: an area in 3D reads again the map files whose extent meets the circle, keeps high-detail
+  entities (`lodLevel` HD, not `render: false`, not left at the origin), exports their models in one batch
+  (`export_many`; which GLB a resource became is kept in `glbs.json`, as SixNG reports skipped exports without
+  files) and writes an assembly manifest with each placement's matrix (from `Entity::gltf`), centred on the point.
+  The 3D view loads each GLB once and clones it per placement.
+- `model::prune_stale_exports`: once per run, export folders whose archive or texture-store state is gone are
+  removed (never when no archive is found).
 
 ## Clothes
 
