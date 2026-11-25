@@ -147,9 +147,10 @@ are hidden for it.
 
 ## Releases and updates
 
-`release.yml` runs on a `v*` tag: one job creates the release with that version's CHANGELOG section, then one job
+`release.yml` runs on a `v*` tag: one job creates the release as a draft with that version's CHANGELOG section, then one job
 per platform builds the installers with `tauri-action` and uploads them with their update bundles, signed with the
-updater key, and `latest.json` (merged across platforms; Windows points at the NSIS setup). Installed copies read
+updater key, and `latest.json` (merged across platforms; Windows points at the NSIS setup); a last job publishes it once every platform built, so `releases/latest` never
+points at a release without its `latest.json`. Installed copies read
 `releases/latest/download/latest.json` (`plugins.updater` in `tauri.conf.json`, which holds the public key),
 check the signature, install (passive NSIS on Windows) and restart through `tauri-plugin-process`. Development
 builds never check.
