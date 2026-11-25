@@ -2,6 +2,12 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.17.0 (2026-11-25)
+
+- Clothes section: every generic garment of `packs.rpf` (worn by any ped of its cut, not named after one character),
+  by slot (top, outerwear, bottom, one-piece, shoes) and cut (women, men), filtered by name. A garment is tried on a
+  mannequin of its cut (the game's base body and a generic head) in 3D.
+
 ## 0.16.4 (2026-11-25)
 
 - Releases stay drafts until every platform is built, then are published: an installed copy no longer finds a
