@@ -2,6 +2,14 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.21.1 (2026-11-25)
+
+- Characters: outfits work. They need to know which textures each part uses: that index is built once, the first
+  time the section opens (about half a minute), and the first outfits read the whole wardrobe (about two minutes);
+  they failed with "texture-users index… not found" before, leaving characters with a head and a top.
+- 3D view: models opened from the explorer and weapons show their textures (a path mixing back and forward slashes lost them).
+- Animations play on the spot: the character no longer walks out of the view.
+
 ## 0.21.0 (2026-11-25)
 
 - Map in 3D: "3D here" (or "3D around" on an entity) shows the area within 100 m in the 3D view: every high-detail

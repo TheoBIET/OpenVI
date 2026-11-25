@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
@@ -30,7 +31,25 @@ function inlineIcons() {
   };
 }
 
+/** The screenshots and clips of `docs/media` (the README's), served at `media/` and copied into the build. */
+const media = fileURLToPath(new URL('../../docs/media', import.meta.url));
+function docsMedia() {
+  return {
+    name: 'openvi-docs-media',
+    configureServer(server) {
+      server.middlewares.use('/OpenVI/media', (request, response, next) => {
+        const file = `${media}${decodeURIComponent((request.url ?? '').split('?')[0] ?? '')}`;
+        if (!existsSync(file)) return next();
+        response.end(readFileSync(file));
+      });
+    },
+    writeBundle(options) {
+      if (existsSync(media)) cpSync(media, `${options.dir}/media`, { recursive: true });
+    },
+  };
+}
+
 export default defineConfig({
   base: '/OpenVI/',
-  plugins: [tailwindcss(), inlineIcons()],
+  plugins: [tailwindcss(), inlineIcons(), docsMedia()],
 });
