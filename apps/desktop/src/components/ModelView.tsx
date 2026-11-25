@@ -2,11 +2,17 @@ import { Eye, FolderDown, Focus, Palette } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { saveModel } from '../lib/export';
-import { isAssembly, type RenderMode } from '../lib/scene';
+import { isAssembly, type ModelStats, type RenderMode } from '../lib/scene';
 import { AnimationBar } from './AnimationBar';
 import { MaterialsPanel } from './MaterialsPanel';
 import { BusyOverlay, StageSkeleton } from './skeleton';
 import { useBufferedScene } from './useBufferedScene';
+
+/** A model's size in one line, for the footer. */
+function describeStats(stats: ModelStats): string {
+  const size = stats.size.map((side) => side.toFixed(2)).join(' × ');
+  return `${stats.meshes} meshes · ${stats.triangles.toLocaleString('en-US')} triangles · ${size} m`;
+}
 
 const modes: { mode: RenderMode; label: string; hint: string }[] = [
   { mode: 'lit', label: 'Lit (textures and lights)', hint: 'Textures and lights: the model as it is meant to look' },
@@ -86,28 +92,15 @@ export function ModelView({
   return (
     <main aria-label={title} className="flex min-w-0 flex-1 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
-        <span className="truncate text-foreground">{title}</span>
-        {stats && (
-          <span className="font-mono tabular-nums">
-            {stats.meshes} meshes · {stats.triangles.toLocaleString('en-US')} triangles ·{' '}
-            {stats.size.map((side) => side.toFixed(2)).join(' × ')} m
+        <span className="min-w-0 flex-1 truncate text-foreground" title={title}>
+          {title}
+        </span>
+        {saved && (
+          <span className="max-w-64 truncate" title={saved}>
+            {saved}
           </span>
         )}
-        {stats && (
-          <span
-            className={stats.missingTextures.length > 0 ? 'text-warning' : ''}
-            title={
-              stats.missingTextures.length > 0
-                ? ['Missing (the materials show without them):', ...stats.missingTextures].join('\n')
-                : undefined
-            }
-          >
-            {stats.textures} textures
-            {stats.missingTextures.length > 0 && `, ${stats.missingTextures.length} missing`}
-          </span>
-        )}
-        {saved && <span className="truncate">{saved}</span>}
-        <span className="ml-auto flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
           {actions}
           {!assembly && (
             <button
@@ -122,7 +115,7 @@ export function ModelView({
               className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
             >
               <FolderDown className="size-3.5" />
-              Export
+              <span className="hidden xl:inline">Export</span>
             </button>
           )}
           <label className="flex items-center gap-1" title={modes.find((item) => item.mode === mode)?.hint}>
@@ -135,7 +128,7 @@ export function ModelView({
                 handle?.setMode(next);
                 setMode(next);
               }}
-              className="h-6 rounded-sm border border-border bg-background px-1 text-foreground"
+              className="h-6 max-w-40 rounded-sm border border-border bg-background px-1 text-foreground"
             >
               {modes.map((item) => (
                 <option key={item.mode} value={item.mode} title={item.hint}>
@@ -147,25 +140,24 @@ export function ModelView({
           <button
             type="button"
             onClick={() => handle?.frame()}
+            title="Frame the whole model"
             className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
           >
             <Focus className="size-3.5" />
-            Frame
+            <span className="hidden xl:inline">Frame</span>
           </button>
-          {!assembly && (
-            <button
-              type="button"
-              aria-pressed={showMaterials}
-              title="Each material's textures and why one is missing"
-              onClick={() => setShowMaterials(!showMaterials)}
-              className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
-                showMaterials ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
-              }`}
-            >
-              <Palette className="size-3.5" />
-              Materials
-            </button>
-          )}
+          <button
+            type="button"
+            aria-pressed={showMaterials}
+            title="Each material's textures and why one is missing"
+            onClick={() => setShowMaterials(!showMaterials)}
+            className={`inline-flex h-6 items-center gap-1 rounded-sm px-1.5 ${
+              showMaterials ? 'bg-primary/15 text-foreground' : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            <Palette className="size-3.5" />
+            <span className="hidden xl:inline">Materials</span>
+          </button>
         </span>
       </div>
       <div className="flex min-h-0 flex-1">
@@ -189,11 +181,29 @@ export function ModelView({
             </p>
           )}
         </div>
-        {showMaterials && !assembly && <MaterialsPanel glb={path} />}
+        {showMaterials && <MaterialsPanel glb={assembly ? null : path} handle={stats ? handle : null} />}
       </div>
       {stats && handle && animations.length > 0 && <AnimationBar handle={handle} animations={animations} />}
-      <p className="h-6 shrink-0 border-t border-border bg-card px-3 text-xs leading-6 text-muted-foreground">
-        Drag to orbit · right-drag to pan · wheel to zoom
+      <p className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-card px-3 text-xs whitespace-nowrap text-muted-foreground">
+        <span className="truncate">Drag to orbit · right-drag to pan · wheel to zoom</span>
+        {stats && (
+          <span className="ml-auto truncate font-mono tabular-nums" title={describeStats(stats)}>
+            {describeStats(stats)}
+          </span>
+        )}
+        {stats && (
+          <span
+            className={`shrink-0 ${stats.missingTextures.length > 0 ? 'text-warning' : ''}`}
+            title={
+              stats.missingTextures.length > 0
+                ? ['Missing (the materials show without them):', ...stats.missingTextures].join('\n')
+                : undefined
+            }
+          >
+            {stats.textures} textures
+            {stats.missingTextures.length > 0 && `, ${stats.missingTextures.length} missing`}
+          </span>
+        )}
       </p>
     </main>
   );
@@ -217,8 +227,10 @@ export function ModelViewSkeleton({
   return (
     <main aria-label={title} aria-busy={error === null} className="flex min-w-0 flex-1 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-3 border-b border-border bg-card px-3 text-xs text-muted-foreground">
-        <span className="truncate text-foreground">{title}</span>
-        <span className="ml-auto flex items-center gap-1">{actions}</span>
+        <span className="min-w-0 flex-1 truncate text-foreground" title={title}>
+          {title}
+        </span>
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">{actions}</span>
       </div>
       {error === null ? (
         <StageSkeleton label={label} />

@@ -39,7 +39,67 @@ export type SceneHandle = {
    * their tracks drive the joints of the same name. Resolves to the new animation list.
    */
   loadAnimations: (glbPath: string) => Promise<{ name: string; duration: number }[]>;
+  /** The materials on screen, read from the model itself (for exports that carry no material description). */
+  materials: () => SceneMaterial[];
 };
+
+/** One material of the model on screen, and the textures it uses. */
+export type SceneMaterial = {
+  name: string;
+  /** Meshes that use it. */
+  meshes: number;
+  textures: { slot: string; width: number; height: number; thumbnail: string | null }[];
+};
+
+/** Texture slots of three.js materials, with the names the panel shows. */
+const SLOTS: [keyof THREE.MeshStandardMaterial, string][] = [
+  ['map', 'base colour'],
+  ['normalMap', 'normal'],
+  ['roughnessMap', 'roughness'],
+  ['metalnessMap', 'metalness'],
+  ['aoMap', 'occlusion'],
+  ['emissiveMap', 'emissive'],
+  ['alphaMap', 'alpha'],
+];
+
+/** A small PNG of `texture`, or null when its image cannot be drawn. */
+function thumbnailOf(texture: THREE.Texture): string | null {
+  const image: unknown = texture.image;
+  if (!(image instanceof ImageBitmap || image instanceof HTMLImageElement || image instanceof HTMLCanvasElement)) {
+    return null;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  context.drawImage(image, 0, 0, 64, 64);
+  return canvas.toDataURL('image/png');
+}
+
+function sceneMaterials(meshes: Map<THREE.Mesh, THREE.Material | THREE.Material[]>): SceneMaterial[] {
+  const found = new Map<THREE.Material, SceneMaterial>();
+  for (const own of meshes.values()) {
+    for (const material of Array.isArray(own) ? own : [own]) {
+      const known = found.get(material);
+      if (known) {
+        known.meshes += 1;
+        continue;
+      }
+      const textures: SceneMaterial['textures'] = [];
+      for (const [key, slot] of SLOTS) {
+        const value: unknown = Reflect.get(material, key);
+        if (!(value instanceof THREE.Texture)) continue;
+        const image: unknown = value.image;
+        const width = image instanceof ImageBitmap || image instanceof HTMLImageElement ? image.width : 0;
+        const height = image instanceof ImageBitmap || image instanceof HTMLImageElement ? image.height : 0;
+        textures.push({ slot, width, height, thumbnail: thumbnailOf(value) });
+      }
+      found.set(material, { name: material.name || `material ${found.size + 1}`, meshes: 1, textures });
+    }
+  }
+  return [...found.values()];
+}
 
 /** Bounds of `object`: its meshes, or, for a skeleton without meshes, its joints. */
 function boundsOf(object: THREE.Object3D): THREE.Box3 {
@@ -395,6 +455,9 @@ export function mountScene(
       action = null;
       clips = gltf.animations;
       return clips.map((clip, index) => ({ name: clip.name || `animation ${index + 1}`, duration: clip.duration }));
+    },
+    materials() {
+      return sceneMaterials(originals);
     },
     dispose() {
       disposed = true;

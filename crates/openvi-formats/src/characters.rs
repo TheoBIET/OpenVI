@@ -55,6 +55,8 @@ pub struct CharacterLook {
 pub struct CharacterParts {
     pub parts: Vec<CharacterPart>,
     pub outfits: Vec<CharacterLook>,
+    /// Why there are no outfits, when there are none (an animal, a character the outfit list does not name…).
+    pub outfits_note: Option<String>,
 }
 
 /// One part a character can wear. Parts of one `group` replace each other: one per group, or none.
@@ -131,18 +133,19 @@ pub fn character_list(
 /// One part of an outfit: offset, group, drawable name, label.
 type OutfitPart = (u64, String, String, String);
 
+/// Outfits by label, each with its parts; or why there are none.
+type Outfits = std::result::Result<Vec<(String, Vec<OutfitPart>)>, String>;
+
 /// The outfits the game's outfit list dresses `name` in (the first is the one shown by default), each as its label
 /// and the parts of `packs.rpf` it wears. A slot worn twice (two accessories) gets a numbered group, so each part
-/// keeps its own. Empty when the list has no outfit for it.
+/// keeps its own. Why there are none when the list has no outfit for it.
 fn outfits_of(
     game_root: &Path,
     archive: &ArchiveInfo,
     index: &ArchiveIndex,
     name: &str,
-) -> Vec<(String, Vec<OutfitPart>)> {
-    let Ok(look) = pedlook::look(game_root, archive, index, name) else {
-        return Vec::new();
-    };
+) -> Outfits {
+    let look = pedlook::look(game_root, archive, index, name)?;
     let wanted: HashSet<&str> = look
         .outfits
         .iter()
@@ -182,7 +185,13 @@ fn outfits_of(
         };
         outfits.push((label, parts));
     }
-    outfits
+    if outfits.is_empty() {
+        return Err(format!(
+            "the outfit list gives {name} {} outfits, but none of their parts were found in {CHARACTER_PARTS}",
+            look.outfits.len()
+        ));
+    }
+    Ok(outfits)
 }
 
 fn options_of(index: &ArchiveIndex, name: &str) -> Vec<outfit::PartOpt> {
@@ -194,15 +203,15 @@ fn options_of(index: &ArchiveIndex, name: &str) -> Vec<outfit::PartOpt> {
     }
 }
 
-/// The outfits of the outfit list for `name`, none for an animal.
+/// The outfits of the outfit list for `name`, or why it has none (animals have none).
 fn outfits_for(
     game_root: &Path,
     workspace: &Workspace,
     index: &ArchiveIndex,
     name: &str,
-) -> Result<Vec<(String, Vec<OutfitPart>)>> {
+) -> Result<Outfits> {
     if outfit::is_animal(name) {
-        return Ok(Vec::new());
+        return Ok(Err("animals have no outfits: their parts make them".into()));
     }
     let archive = workspace.resolve(CHARACTER_PARTS)?;
     Ok(outfits_of(game_root, &archive, index, name))
@@ -224,7 +233,10 @@ pub fn character_parts(game_root: &Path, work_dir: &Path, name: &str) -> Result<
         })
         .collect();
     let own = !parts.is_empty();
-    let outfits = outfits_for(game_root, &workspace, &index, &name)?;
+    let (outfits, outfits_note) = match outfits_for(game_root, &workspace, &index, &name)? {
+        Ok(outfits) => (outfits, None),
+        Err(note) => (Vec::new(), Some(note)),
+    };
     for (position, (_, worn)) in outfits.iter().enumerate() {
         for (offset, group, drawable, label) in worn {
             if parts.iter().any(|part| part.offset == *offset) {
@@ -248,7 +260,11 @@ pub fn character_parts(game_root: &Path, work_dir: &Path, name: &str) -> Result<
             parts: worn.into_iter().map(|(offset, ..)| offset).collect(),
         })
         .collect();
-    Ok(CharacterParts { parts, outfits })
+    Ok(CharacterParts {
+        parts,
+        outfits,
+        outfits_note,
+    })
 }
 
 /// An animation clip to play on a character: `(dictionary name, clip name)`.
@@ -282,7 +298,7 @@ pub fn character_glb(
                 .collect();
             if own.is_empty() {
                 // A ped model: its first outfit.
-                let outfits = outfits_for(game_root, &workspace, &index, &name)?;
+                let outfits = outfits_for(game_root, &workspace, &index, &name)?.unwrap_or_default();
                 outfits
                     .into_iter()
                     .next()

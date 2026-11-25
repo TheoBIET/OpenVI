@@ -34,7 +34,12 @@ export function characterList(root: string): Promise<Character[]> {
 /** One outfit of the game's outfit list: its main garments and the parts (offsets) it wears. */
 export type CharacterLook = { label: string; parts: number[] };
 
-export type CharacterParts = { parts: CharacterPart[]; outfits: CharacterLook[] };
+export type CharacterParts = {
+  parts: CharacterPart[];
+  outfits: CharacterLook[];
+  /** Why there are no outfits, when there are none. */
+  outfitsNote: string | null;
+};
 
 /** The parts `name` can wear, by group, and the outfits the game dresses it in. */
 export function characterParts(root: string, name: string): Promise<CharacterParts> {

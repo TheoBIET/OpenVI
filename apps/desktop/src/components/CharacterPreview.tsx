@@ -110,6 +110,10 @@ export function CharacterPreview({ root, character }: { root: string; character:
   }
 
   const outfits = parts.state === 'ready' ? parts.value.outfits : [];
+  const outfitsNote = parts.state === 'ready' ? parts.value.outfitsNote : null;
+  /** The outfit worn now, if what is worn is exactly one of them. */
+  const wornKey = chosen?.join() ?? '';
+  const wearing = outfits.findIndex((outfit) => [...outfit.parts].sort((a, b) => a - b).join() === wornKey);
   const title = character.display ? `${character.display} · ${character.name}` : character.name;
 
   return (
@@ -125,49 +129,64 @@ export function CharacterPreview({ root, character }: { root: string; character:
       ) : (
         <ModelViewSkeleton title={title} label={`Assembling ${character.name}…`} error={failure} />
       )}
-      <aside aria-label="Parts" className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-card">
-        <header className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs">
-          <h2 className="font-title text-foreground">Parts</h2>
-          <span className="text-muted-foreground">{chosen?.length ?? 0} worn</span>
-          <button
-            type="button"
-            disabled={!changed}
-            onClick={() => setApplied(chosen)}
-            className="ml-auto inline-flex h-6 items-center rounded-sm bg-accent-gradient px-2 font-semibold text-on-accent disabled:opacity-35"
-          >
-            Apply
-          </button>
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
-          >
-            <RotateCcw className="size-3.5" />
-            Default
-          </button>
-        </header>
-        {outfits.length > 0 && (
-          <label className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-            Outfit
-            <select
-              aria-label="Outfit"
-              value=""
-              onChange={(event) => dress(Number(event.target.value))}
-              className="h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-foreground"
+      <aside
+        aria-label="Look"
+        className="flex w-72 shrink-0 flex-col overflow-hidden border-l border-border bg-card text-xs"
+      >
+        <section aria-label="Outfits" className="flex max-h-[40%] shrink-0 flex-col border-b border-border">
+          <header className="border-b border-border px-3 py-2">
+            <h2 className="font-title text-foreground">
+              Outfits <span className="font-normal text-muted-foreground">{outfits.length || ''}</span>
+            </h2>
+            <p className="text-muted-foreground">Complete looks the game dresses {character.name} in.</p>
+          </header>
+          <div className="overflow-auto">
+            {parts.state === 'loading' && <p className="px-3 py-2 text-muted-foreground">Reading…</p>}
+            {parts.state === 'ready' && outfits.length === 0 && (
+              <p className="px-3 py-2 text-muted-foreground">None: {outfitsNote ?? 'the outfit list names none.'}</p>
+            )}
+            {outfits.map((outfit, index) => (
+              <button
+                key={outfit.label + String(index)}
+                type="button"
+                onClick={() => dress(index)}
+                title={`${outfit.label} · ${outfit.parts.length} parts`}
+                className={`flex h-6 w-full items-center gap-2 px-3 text-left ${
+                  wearing === index ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary'
+                }`}
+              >
+                <span className="truncate">{outfit.label}</span>
+                <span className="ml-auto shrink-0 font-mono text-muted-foreground tabular-nums">
+                  {outfit.parts.length}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <header className="border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2">
+            <h2 className="font-title text-foreground">Parts</h2>
+            <span className="text-muted-foreground">{chosen?.length ?? 0} worn</span>
+            <button
+              type="button"
+              disabled={!changed}
+              onClick={() => setApplied(chosen)}
+              className="ml-auto inline-flex h-6 items-center rounded-sm bg-accent-gradient px-2 font-semibold text-on-accent disabled:opacity-35"
             >
-              <option value="" disabled>
-                {outfits.length} from the game…
-              </option>
-              {outfits.map((outfit, index) => (
-                <option key={outfit.label + String(index)} value={index}>
-                  {outfit.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <div className="flex-1 overflow-auto text-xs">
-          {parts.state === 'loading' && <p className="px-3 py-2 text-muted-foreground">Reading…</p>}
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex h-6 items-center gap-1 rounded-sm px-1.5 text-foreground hover:bg-muted"
+            >
+              <RotateCcw className="size-3.5" />
+              Default
+            </button>
+          </div>
+          <p className="text-muted-foreground">One piece per slot, to mix outfits or take a piece off.</p>
+        </header>
+        <div className="flex-1 overflow-auto">
           {groups.map(([group, options]) => (
             <fieldset key={group} className="border-b border-border px-3 py-2">
               <legend className="font-title text-accent-solid">{group}</legend>
