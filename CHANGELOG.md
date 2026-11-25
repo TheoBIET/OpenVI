@@ -2,6 +2,16 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.16.1 (2026-11-25)
+
+- 3D view: the header keeps the title and the buttons (labels shown on wide windows); the model's size and texture
+  counts move to the footer, so nothing overflows.
+- Materials works for every model: characters, vehicles and weapons, which carry no material description, list the
+  materials of the model on screen with their textures and thumbnails.
+- Characters: the side panel separates **Outfits** (complete looks the game dresses the character in, the one worn
+  highlighted) from **Parts** (one piece per slot, to mix outfits or take a piece off), and says why a character has
+  no outfit.
+
 ## 0.16.0 (2026-11-25)
 
 - Weapons section: every weapon model of `data.rpf` and `packs.rpf` (filter by name, class or make; class from the
