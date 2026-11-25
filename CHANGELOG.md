@@ -2,6 +2,11 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.16.2 (2026-11-25)
+
+- 3D view: the texture count is the textures of the model that loaded, and "missing" lists the files of those that
+  did not (hover it): it said "0 textures, n missing" on models whose textures were on screen.
+
 ## 0.16.1 (2026-11-25)
 
 - 3D view: the header keeps the title and the buttons (labels shown on wide windows); the model's size and texture
