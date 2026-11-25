@@ -73,6 +73,8 @@ State of the work and the next task, for whoever picks it up. Update it when you
   shipping a release signed with the old key that carries the new public key.
 - **Done (0.16.0):** Weapons section (list, 3D build from parts, Parts panel). **Never seen: needs `data.rpf` and
   `packs.rpf`.** Finishes (`matlib::weapon_finishes`) are not offered yet.
+- **Done (0.17.0):** Clothes section (generic garments by slot and cut, tried on a mannequin). **Never seen: needs
+  `packs.rpf`.** Wardrobe items (style, colour tags, presets: `sixng_core::wardrobe`) need the texture-users index.
 - **Releasing:** `pnpm bump x.y.z`, CHANGELOG entry, commit, `git tag -a vx.y.z`, push `main`, then push the tag
   alone (`git push origin vx.y.z`) once the maintainer agrees: that builds and publishes the release. Pushing more
   than three tags at once starts no workflow.
@@ -145,7 +147,7 @@ carver cannot see, folders counted in the header, or the missing parts above.
 3. **SixNG's new decoders**: a game text search (`sixng_core::text`, 4.2 M strings), then a Cutscenes section
    (`sixng_core::cutscene`: every story scene's cast, props, cameras and clips, played on the cast).
 4. **More sections for a broad audience**, one release each: Clothes (wardrobe items by slot, style and colour,
-   tried on a character), Audio (banks played in the app, Ogg/WAV export), Text, Cutscenes, Interiors (MLO rooms,
+   tried on a character: generic garments done in 0.17.0), Audio (banks played in the app, Ogg/WAV export), Text, Cutscenes, Interiors (MLO rooms,
    contents and entity sets); weapon finishes. Then the map, in the spirit of CodeWalker.
 5. **Hash names**: `sixng_core::names` (hash → name, built from `common.rpf` and `shaders.rpf`) for unnamed
    resources and texture hashes.

@@ -7,6 +7,7 @@
 pub mod animations;
 pub mod catalog;
 pub mod characters;
+pub mod clothes;
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;
 pub mod index_cache;

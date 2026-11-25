@@ -4,6 +4,7 @@ mod animations;
 mod archive;
 mod catalog;
 mod characters;
+mod clothes;
 mod export;
 mod file;
 mod fs;
@@ -41,6 +42,8 @@ pub fn run() {
             model::model_materials,
             characters::characters,
             weapons::weapons,
+            clothes::clothes,
+            clothes::garment_preview,
             weapons::weapon_part_list,
             weapons::weapon_preview,
             characters::character_part_list,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimationsView } from './components/AnimationsView';
 import { CharacterPreview } from './components/CharacterPreview';
 import { CharactersView } from './components/CharactersView';
+import { ClothesView, GarmentPreview } from './components/ClothesView';
 import { DocumentView, isViewable } from './components/DocumentView';
 import { EmptyState } from './components/EmptyState';
 import { FileList } from './components/FileList';
@@ -19,6 +20,7 @@ import { WeaponPreview } from './components/WeaponPreview';
 import { WeaponsView } from './components/WeaponsView';
 import type { Vehicle } from './lib/catalog';
 import type { Character } from './lib/characters';
+import type { Garment } from './lib/clothes';
 import {
   type Crumb,
   type Entry,
@@ -62,6 +64,10 @@ const characterCrumb = '#character';
 /** Paths of the breadcrumbs that stand for the weapon list and the weapon shown in 3D. */
 const weaponsCrumb = '#weapons';
 const weaponCrumb = '#weapon';
+
+/** Paths of the breadcrumbs that stand for the clothes list and the garment shown in 3D. */
+const clothesCrumb = '#clothes';
+const garmentCrumb = '#garment';
 
 /** Path of the breadcrumb that stands for the Animations section. */
 const animationsCrumb = '#animations';
@@ -112,6 +118,8 @@ export function App() {
   const [character, setCharacter] = useState<Character | null>(null);
   /** A weapon of the Weapons section shown in 3D. */
   const [weapon, setWeapon] = useState<Weapon | null>(null);
+  /** A garment of the Clothes section shown in 3D. */
+  const [garment, setGarment] = useState<Garment | null>(null);
   /** In a catalog section rather than the explorer. */
   const inCatalog = section !== 'explorer';
   /** Only the latest navigation may show its listing: an archive scan can finish after the user moved on. */
@@ -159,6 +167,7 @@ export function App() {
     setVehicle(null);
     setCharacter(null);
     setWeapon(null);
+    setGarment(null);
     setTree((previous) => ({ ...previous, [next.path]: next.entries.filter(isTreeEntry) }));
     setExpanded((previous) => new Set([...previous, ...next.crumbs.map((crumb) => crumb.path)]));
     setSelected(select);
@@ -191,6 +200,7 @@ export function App() {
     if (path === vehiclesCrumb) setVehicle(null);
     if (path === charactersCrumb) setCharacter(null);
     if (path === weaponsCrumb) setWeapon(null);
+    if (path === clothesCrumb) setGarment(null);
     if (
       !root ||
       path === searchCrumb ||
@@ -201,6 +211,8 @@ export function App() {
       path === characterCrumb ||
       path === weaponsCrumb ||
       path === weaponCrumb ||
+      path === clothesCrumb ||
+      path === garmentCrumb ||
       path === animationsCrumb
     )
       return;
@@ -235,6 +247,10 @@ export function App() {
     }
     if (weapon && step === -1) {
       setWeapon(null);
+      return;
+    }
+    if (garment && step === -1) {
+      setGarment(null);
       return;
     }
     if (inCatalog && step === -1) {
@@ -391,6 +407,10 @@ export function App() {
     crumbs = [rootCrumb, { name: 'Characters', path: charactersCrumb }];
     if (character) crumbs = [...crumbs, { name: character.name, path: characterCrumb }];
   }
+  if (section === 'clothes' && rootCrumb) {
+    crumbs = [rootCrumb, { name: 'Clothes', path: clothesCrumb }];
+    if (garment) crumbs = [...crumbs, { name: garment.label, path: garmentCrumb }];
+  }
   if (section === 'weapons' && rootCrumb) {
     crumbs = [rootCrumb, { name: 'Weapons', path: weaponsCrumb }];
     if (weapon) crumbs = [...crumbs, { name: weapon.name, path: weaponCrumb }];
@@ -400,6 +420,7 @@ export function App() {
     else if (vehicle && vehiclesOpen) setVehicle(null);
     else if (character && section === 'characters') setCharacter(null);
     else if (weapon && section === 'weapons') setWeapon(null);
+    else if (garment && section === 'clothes') setGarment(null);
     else if (inCatalog) setVehiclesOpen(false);
     else if (search) void travel(-1);
     else if (parent) void navigate(parent.path);
@@ -482,6 +503,10 @@ export function App() {
           {!opening && !viewer && section === 'characters' && character && (
             <CharacterPreview root={root} character={character} />
           )}
+          {!opening && !viewer && section === 'clothes' && !garment && (
+            <ClothesView root={root} filter={filter} onOpen={setGarment} />
+          )}
+          {!opening && !viewer && section === 'clothes' && garment && <GarmentPreview root={root} garment={garment} />}
           {!opening && !viewer && section === 'weapons' && !weapon && (
             <WeaponsView root={root} filter={filter} onOpen={setWeapon} />
           )}

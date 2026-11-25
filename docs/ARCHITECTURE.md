@@ -136,6 +136,13 @@ is newer) and their clips; a clip plays through `character_glb` with a clip, whi
 (bone tracks on the joints of the same name; `anim_only` for the skeleton alone). The look folder's name includes
 the clip, and its sources `anim.rpf`'s state.
 
+## Clothes
+
+`openvi_formats::clothes` lists the generic garments of `packs.rpf`: drawables with a fit tag (`mr1`, `fr1`…) and no
+character prefix (`outfit::outfit_prefix`), whose slot (`pedlook::slot_of`) is a garment's (full, outer, top,
+bottom, feet). A garment is tried on a mannequin of its fit (the fit's skin meshes `hand_<fit>_000_full` and
+`feet_<fit>_000_full`, and its first generic head), assembled through `character_glb` like a character.
+
 ## Weapons
 
 `openvi_formats::weapons` lists the weapon models (`sixng_core::weapon::is_weapon`, `_hi` copy first) of `data.rpf` and

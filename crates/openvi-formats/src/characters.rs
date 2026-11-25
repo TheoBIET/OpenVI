@@ -139,12 +139,7 @@ type Outfits = std::result::Result<Vec<(String, Vec<OutfitPart>)>, String>;
 /// The outfits the game's outfit list dresses `name` in (the first is the one shown by default), each as its label
 /// and the parts of `packs.rpf` it wears. A slot worn twice (two accessories) gets a numbered group, so each part
 /// keeps its own. Why there are none when the list has no outfit for it.
-fn outfits_of(
-    game_root: &Path,
-    archive: &ArchiveInfo,
-    index: &ArchiveIndex,
-    name: &str,
-) -> Outfits {
+fn outfits_of(game_root: &Path, archive: &ArchiveInfo, index: &ArchiveIndex, name: &str) -> Outfits {
     let look = pedlook::look(game_root, archive, index, name)?;
     let wanted: HashSet<&str> = look
         .outfits
@@ -154,7 +149,10 @@ fn outfits_of(
         .map(|part| part.drawable.as_str())
         .collect();
     // The LOD0 copy of each drawable the outfits name.
-    let drawables = index.entries.iter().filter(|entry| entry.rtype.as_deref() == Some("dr"));
+    let drawables = index
+        .entries
+        .iter()
+        .filter(|entry| entry.rtype.as_deref() == Some("dr"));
     let by_name = outfit::dedupe(drawables.filter_map(|entry| {
         let name = entry.name.as_ref()?.to_ascii_lowercase();
         wanted.contains(name.as_str()).then_some((name, entry))
@@ -164,7 +162,9 @@ fn outfits_of(
         let mut seen: HashMap<&str, usize> = HashMap::new();
         let mut parts = Vec::new();
         for part in outfit.parts.iter().filter(|part| !part.strands) {
-            let Some(entry) = by_name.get(&part.drawable) else { continue };
+            let Some(entry) = by_name.get(&part.drawable) else {
+                continue;
+            };
             let count = seen.entry(part.slot.as_str()).or_default();
             *count += 1;
             let group = if *count == 1 {
@@ -204,12 +204,7 @@ fn options_of(index: &ArchiveIndex, name: &str) -> Vec<outfit::PartOpt> {
 }
 
 /// The outfits of the outfit list for `name`, or why it has none (animals have none).
-fn outfits_for(
-    game_root: &Path,
-    workspace: &Workspace,
-    index: &ArchiveIndex,
-    name: &str,
-) -> Result<Outfits> {
+fn outfits_for(game_root: &Path, workspace: &Workspace, index: &ArchiveIndex, name: &str) -> Result<Outfits> {
     if outfit::is_animal(name) {
         return Ok(Err("animals have no outfits: their parts make them".into()));
     }

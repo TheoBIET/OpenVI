@@ -190,7 +190,11 @@ pub fn weapon_list(
 }
 
 /// The archive, index and model entry of weapon `name` (its stem).
-fn find_weapon(game_root: &Path, workspace: &Workspace, name: &str) -> Result<(&'static str, Arc<ArchiveIndex>, Entry)> {
+fn find_weapon(
+    game_root: &Path,
+    workspace: &Workspace,
+    name: &str,
+) -> Result<(&'static str, Arc<ArchiveIndex>, Entry)> {
     let name = name.to_ascii_lowercase();
     for archive in WEAPON_ARCHIVES {
         if !game_root.join(archive).is_file() {
@@ -259,19 +263,18 @@ fn to_gltf(matrix: &Mat) -> Mat {
 
 /// Weapon `name` built with `parts` (offsets from [`weapon_parts`]), or its default build when `None`: each part
 /// exported (or reused) and placed on its mount. Writes the manifest into `<work>/weapons`.
-pub fn weapon_assembly(
-    game_root: &Path,
-    work_dir: &Path,
-    name: &str,
-    parts: Option<&[u64]>,
-) -> Result<WeaponAssembly> {
+pub fn weapon_assembly(game_root: &Path, work_dir: &Path, name: &str, parts: Option<&[u64]>) -> Result<WeaponAssembly> {
     let workspace = Workspace::new(game_root, work_dir);
     let (archive, index, entry) = find_weapon(game_root, &workspace, name)?;
     let model = entry.name.clone().unwrap_or_default();
     let options = weapon::weapon_options(&index.entries, &model);
     let mut chosen: Vec<u64> = match parts {
         Some(parts) => parts.to_vec(),
-        None => options.iter().filter(|option| option.default).map(|option| option.off).collect(),
+        None => options
+            .iter()
+            .filter(|option| option.default)
+            .map(|option| option.off)
+            .collect(),
     };
     chosen.sort_unstable();
     chosen.dedup();
@@ -283,8 +286,8 @@ pub fn weapon_assembly(
             .iter()
             .find(|option| option.off == *offset)
             .with_context(|| format!("no part of {model} at {offset:#x}"))?;
-        let glb = model_glb(game_root, work_dir, archive, *offset)
-            .with_context(|| format!("exporting {}", option.name))?;
+        let glb =
+            model_glb(game_root, work_dir, archive, *offset).with_context(|| format!("exporting {}", option.name))?;
         let slot = weapon::part_slot(&model, &option.name).unwrap_or_default();
         exported.push((option.name.clone(), slot, glb));
     }
@@ -328,7 +331,10 @@ pub fn weapon_assembly(
             version(&game_root.join(archive)),
             stores_version(game_root)
         ))
-        .join(format!("{}_{look:016x}.weapon.json", stem(&model.to_ascii_lowercase()).0));
+        .join(format!(
+            "{}_{look:016x}.weapon.json",
+            stem(&model.to_ascii_lowercase()).0
+        ));
     std::fs::create_dir_all(manifest.parent().context("manifest path has no folder")?)?;
     let body = Manifest {
         kind: "openvi.assembly",
