@@ -193,14 +193,43 @@ function loadingManager(glbPath: string, failed: string[]): THREE.LoadingManager
   return manager;
 }
 
-/** A model loaded: its scene and animations. */
-type LoadedModel = { scene: THREE.Object3D; animations: THREE.AnimationClip[] };
+/** A model loaded: its scene and animations, how many of its textures loaded and the files of those that did not. */
+type LoadedModel = {
+  scene: THREE.Object3D;
+  animations: THREE.AnimationClip[];
+  textures: number;
+  missing: string[];
+};
+
+/** Entry `index` of the glTF JSON array `key` (`textures`, `images`…), as an object. */
+function entryOf(json: unknown, key: string, index: unknown): object | null {
+  if (typeof json !== 'object' || json === null || typeof index !== 'number') return null;
+  const list: unknown = Reflect.get(json, key);
+  const entry: unknown = Array.isArray(list) ? list[index] : null;
+  return typeof entry === 'object' && entry !== null ? entry : null;
+}
 
 async function loadGlb(path: string, failed: string[]): Promise<LoadedModel> {
   const loader = new GLTFLoader(loadingManager(path, failed));
   loader.setResourcePath(RESOURCE);
   const gltf = await loader.loadAsync(convertFileSrc(path));
-  return { scene: gltf.scene, animations: gltf.animations };
+  // Each texture of the GLB as the loader resolved it (already loaded: no new request); null when it failed.
+  const resolved: unknown[] = await gltf.parser.getDependencies('texture');
+  const json: unknown = gltf.parser.json;
+  const missing: string[] = [];
+  resolved.forEach((texture, index) => {
+    if (texture) return;
+    const source: unknown = Reflect.get(entryOf(json, 'textures', index) ?? {}, 'source');
+    const image = entryOf(json, 'images', source);
+    const uri: unknown = image ? Reflect.get(image, 'uri') : null;
+    missing.push(typeof uri === 'string' ? (decodeURIComponent(uri).split('/').at(-1) ?? uri) : `texture ${index + 1}`);
+  });
+  return {
+    scene: gltf.scene,
+    animations: gltf.animations,
+    textures: resolved.filter(Boolean).length,
+    missing,
+  };
 }
 
 /** One model of an assembly: a GLB and the column-major matrix that places it. */
@@ -241,11 +270,16 @@ async function loadModel(path: string, failed: string[]): Promise<LoadedModel> {
       const loaded = await loadGlb(part.glb, failed);
       loaded.scene.name = part.name;
       loaded.scene.applyMatrix4(new THREE.Matrix4().fromArray(part.matrix));
-      return loaded.scene;
+      return loaded;
     }),
   );
-  group.add(...parts);
-  return { scene: group, animations: [] };
+  group.add(...parts.map((part) => part.scene));
+  return {
+    scene: group,
+    animations: [],
+    textures: parts.reduce((sum, part) => sum + part.textures, 0),
+    missing: parts.flatMap((part) => part.missing),
+  };
 }
 
 /**
@@ -377,12 +411,6 @@ export function mountScene(
         if (!(geometry instanceof THREE.BufferGeometry)) return;
         triangles += (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
       });
-      const textures = new Set<THREE.Texture>();
-      for (const own of originals.values()) {
-        for (const material of Array.isArray(own) ? own : [own]) {
-          for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
-        }
-      }
       if (meshes === 0) {
         joints = jointLines(model);
         scene.add(joints.lines);
@@ -396,8 +424,8 @@ export function mountScene(
         meshes,
         triangles: Math.round(triangles),
         size: [size.x, size.y, size.z],
-        textures: textures.size,
-        missingTextures: [...new Set(failed)],
+        textures: gltf.textures,
+        missingTextures: [...new Set(gltf.missing)],
         animations: clips.map((clip, index) => ({
           name: clip.name || `animation ${index + 1}`,
           duration: clip.duration,
