@@ -2,6 +2,15 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.21.0 (2026-11-25)
+
+- Map in 3D: "3D here" (or "3D around" on an entity) shows the area within 100 m in the 3D view: every high-detail
+  model placed there (no low-detail stand-ins or proxies), each at its own place, turned and scaled as in the game.
+  The first time exports the area's models (about a minute for a dense block); then it opens in seconds. A model
+  placed many times is loaded once.
+- Disk: exports of archive or texture-store states that are gone (a download, an update) are removed once per run;
+  they piled up a gigabyte at a time.
+
 ## 0.20.0 (2026-11-25)
 
 - Interiors section: every interior the map places (shops, homes, garages…), with its rooms, entities and entity sets
