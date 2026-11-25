@@ -2,6 +2,17 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.22.0 (2026-11-25)
+
+- World view, in the spirit of CodeWalker: "Fly here" on the map (or on an entity) flies through the city in 3D.
+  Drag to look, WASD or ZQSD to fly, Space and C up and down, Shift faster, the wheel sets the speed. The world comes
+  in 128 m cells around the camera, nearest first: a cell's models are exported the first time (about a minute),
+  then it opens at once; the rest of the map stands as points in the distance. An Environment panel sets the hour
+  (sky, sun, light, presets from dawn to night), the sea, the detail (384 m to 1.1 km) and the speed; the HUD shows
+  the heading, position, frame rate and cells; Teleport goes to any x, y.
+- A model placed many times in a cell is drawn once (instanced), and textures are reduced to 512 px there: a block
+  holds thousands of placements.
+
 ## 0.21.1 (2026-11-25)
 
 - Characters: outfits work. They need to know which textures each part uses: that index is built once, the first
