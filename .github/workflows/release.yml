@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       notes: ${{ steps.notes.outputs.notes }}
+      id: ${{ steps.draft.outputs.id }}
     steps:
       - uses: actions/checkout@v4
       - name: Release notes from the changelog
@@ -32,12 +33,17 @@ jobs:
           cat notes.md
           { echo "notes<<NOTES_END"; cat notes.md; echo NOTES_END; } >> "$GITHUB_OUTPUT"
       # A draft until every platform is built: `releases/latest` (and its latest.json) moves only then.
+      # The builds upload to it by id: a draft cannot be found by its tag.
       - name: Create it as a draft, or keep the one there
+        id: draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --title "OpenVI $GITHUB_REF_NAME" --notes-file notes.md --verify-tag --draft
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -1)
+          test -n "$id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.name }})
@@ -76,6 +82,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         with:
           projectPath: apps/desktop
+          releaseId: ${{ needs.release.outputs.id }}
           tagName: ${{ github.ref_name }}
           releaseName: OpenVI ${{ github.ref_name }}
           # Also the notes installed copies show beside "Update to x.y.z" (latest.json).
