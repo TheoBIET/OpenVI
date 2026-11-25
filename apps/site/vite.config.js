@@ -43,6 +43,12 @@ function docsMedia() {
         response.end(readFileSync(file));
       });
     },
+    // `<img data-media="x.webp">` becomes `<img src="<base>media/x.webp">`, after Vite's own pass (which would try to
+    // resolve the files in the project).
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html) => html.replace(/data-media="([^"]+)"/g, (_, file) => `src="/OpenVI/media/${file}"`),
+    },
     writeBundle(options) {
       if (existsSync(media)) cpSync(media, `${options.dir}/media`, { recursive: true });
     },

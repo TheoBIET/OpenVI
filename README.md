@@ -12,6 +12,8 @@
 
 </div>
 
+<p align="center"><img src="docs/media/map-3d.gif" width="760" alt="A block of the map in 3D: an elevated highway, a parking garage, a billboard" /></p>
+
 > [!WARNING]
 > OpenVI is in early development. Installers are on the [releases page](https://github.com/TheoBIET/OpenVI/releases)
 > (not code-signed yet); installed copies update themselves. It reads files you own and never decrypts, uploads or
@@ -26,16 +28,47 @@ assets the game never shows.
 
 It runs on Windows, macOS and Linux.
 
+## A look inside
+
+Screenshots of OpenVI on its maintainer's own copy of the game.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/explorer.webp" alt="The explorer inside levels.rpf: drawables by type, one previewed in 3D" /><br /><sub><b>Explorer</b>: the archives opened like folders, resources by type, a click previews.</sub></td>
+    <td width="50%"><img src="docs/media/vehicle.gif" alt="A vehicle turning in the 3D view" /><br /><sub><b>Vehicles</b>: every car of the catalog in 3D, in any of its configurations.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/vehicles.webp" alt="The vehicle catalog: name, make, handling, mass, configurations, colour" /><br /><sub><b>Vehicle catalog</b>: make, handling, mass, configurations; CSV and JSON export.</sub></td>
+    <td><img src="docs/media/character.webp" alt="A character assembled in 3D with its outfits and parts" /><br /><sub><b>Characters</b>: 2,900 characters and ped models, dressed in the game's outfits or part by part.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/animation.gif" alt="A walk cycle played on a character" /><br /><sub><b>Animations</b>: 61,500 clip dictionaries, played on a character or its skeleton.</sub></td>
+    <td><img src="docs/media/weapon.webp" alt="A rifle built from its parts" /><br /><sub><b>Weapons</b>: built from their parts (barrel, stock, magazine, sights…).</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/map.webp" alt="The whole map from above: two million entities coloured by height" /><br /><sub><b>Map</b>: 2.2 million placed entities from above, coloured by height, interiors marked.</sub></td>
+    <td><img src="docs/media/map-3d.webp" alt="An area of the map rebuilt in 3D" /><br /><sub><b>Map in 3D</b>: any area rebuilt from its models, each where the game places it.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/clothes.webp" alt="The garment list with one jacket tried on a mannequin" /><br /><sub><b>Clothes</b>: 1,349 garments by slot and cut, tried on a mannequin.</sub></td>
+    <td><img src="docs/media/text.webp" alt="A search through the game's text" /><br /><sub><b>Text</b>: 300,000 English strings searched as you type.</sub></td>
+  </tr>
+</table>
+
+Also: cutscenes (1,240 scenes, played by their cast), the audio banks (played and saved), interiors, textures,
+documents in a code editor, and glTF, PNG, CSV and JSON exports.
+
 ## Roadmap
 
 | Feature                                                                     | Status     |
 | --------------------------------------------------------------------------- | ---------- |
 | Explorer: folder tree, grouped details list, path bar, filter, history      | ✅ done    |
 | Archive view: resources inside RPF9 archives, by type, with recovered names | ✅ done    |
-| Viewers and exports: textures, text, 3D models and vehicles; audio to come  | 🚧 started |
-| Search across the whole index: names (hashes and game text to come)         | ✅ names   |
-| Data-mining views: vehicles done; weapons, missions, hidden content to come | 🚧 started |
-| Map viewer in the spirit of CodeWalker                                      | 💭 later   |
+| Viewers and exports: 3D models, textures, text, audio; glTF, PNG, CSV, JSON | ✅ done    |
+| Search: resource names across the index, and the game's text                | ✅ done    |
+| Sections: vehicles, characters, clothes, weapons, animations, cutscenes     | ✅ done    |
+| Map in the spirit of CodeWalker: from above, areas in 3D, interiors         | 🚧 started |
+| Missions, hidden content, hash names, garment colours                       | 💭 next    |
 | Modding (replacing files) through a PC compatibility layer's overlay        | 💭 later   |
 
 > [!NOTE]
