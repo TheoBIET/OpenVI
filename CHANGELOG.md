@@ -2,6 +2,18 @@
 
 Each version is a git tag (`vX.Y.Z`); while OpenVI is 0.x, a feature bumps the minor version and a fix the patch.
 
+## 0.18.0 (2026-11-25)
+
+- Text section: search the game's English strings (subtitles, item names, UI, messages) by any part of them or by
+  label hash; a string shows in full, markup included, with its table. The first opening reads the text tables of
+  `data.rpf` (about half a minute), then it is cached.
+- Faster: the vehicle catalog opens in seconds (its tables were decoded again at every opening, over a minute on a
+  full install); they are decoded again only when `packs.rpf` or `data.rpf` changes.
+- An archive still being written (a download in progress) is no longer scanned again at every change: its earlier
+  scan is used until it has settled. A finished scan no longer leaves its checkpoints behind (a gigabyte for
+  `levels.rpf` at each scan).
+- Characters whose parts are not marked default (`a_head`) wear the first part of each slot instead of failing.
+
 ## 0.17.0 (2026-11-25)
 
 - Clothes section: every generic garment of `packs.rpf` (worn by any ped of its cut, not named after one character),
